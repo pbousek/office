@@ -245,5 +245,6 @@ async function refreshCustomers() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshCustomers();
 });
+window.addEventListener('focus', refreshCustomers);
 </script>
 </body></html>
