@@ -153,6 +153,14 @@ function addRow(desc, qty, unit, price) {
   document.getElementById('items-body').appendChild(tr);
 }
 
+document.querySelector('form').addEventListener('submit', function() {
+  document.querySelectorAll('#items-body tr').forEach((tr, idx) => {
+    tr.querySelectorAll('input, select').forEach(el => {
+      el.name = el.name.replace(/_\d+$/, `_${idx}`);
+    });
+  });
+});
+
 // Toggle VAT column visibility
 document.querySelector('[name=vat_payer]').addEventListener('change', function() {
   document.querySelectorAll('.vat-col').forEach(el => el.style.display = this.checked ? '' : 'none');
