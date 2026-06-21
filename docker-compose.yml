@@ -8,7 +8,9 @@ services:
       - timetrack_data:/app/data
 
   fakturace:
-    build: ./fakturace
+    build:
+      context: .
+      dockerfile: fakturace/Dockerfile
     restart: unless-stopped
     ports:
       - "127.0.0.1:8732:8732"
