@@ -27,6 +27,8 @@ def send_invoice_email(
     password = settings.get("smtp_pass", "")
     from_addr = settings.get("smtp_from", "").strip() or user
 
+    bcc = settings.get("smtp_bcc", "").strip()
+
     msg = MIMEMultipart()
     msg["From"] = from_addr
     msg["To"] = to
@@ -59,4 +61,5 @@ def send_invoice_email(
         smtp.ehlo()
         if user:
             smtp.login(user, password)
-        smtp.send_message(msg)
+        rcpt = [to] + ([bcc] if bcc else [])
+        smtp.send_message(msg, to_addrs=rcpt)

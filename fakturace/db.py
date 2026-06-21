@@ -77,6 +77,7 @@ def init_db():
             "smtp_user": "",
             "smtp_pass": "",
             "smtp_from": "",
+            "smtp_bcc": "",
             "email_signature": "",
             "email_template": "Dobrý den,\n\nv příloze zasílám fakturu č. {number} na částku {total} {currency} se splatností {due_date}.\n\nS pozdravem",
         }

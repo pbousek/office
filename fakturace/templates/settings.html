@@ -147,6 +147,12 @@
     </div>
     <div class="form-row" style="margin-bottom:16px;">
       <div class="field wide">
+        <label>BCC (skrytá kopie všech odeslaných faktur)</label>
+        <input type="email" name="smtp_bcc" value="{{ settings.smtp_bcc }}" placeholder="fakturace@sundown.cz">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field wide">
         <label>Šablona těla e-mailu <span style="color:var(--muted);font-weight:normal;">— proměnné: {number} {total} {currency} {due_date}</span></label>
         <textarea name="email_template" rows="5" style="width:100%;max-width:500px;font-family:inherit;">{{ settings.email_template }}</textarea>
       </div>
