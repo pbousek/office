@@ -29,9 +29,11 @@ def send_invoice_email(
 
     bcc = settings.get("smtp_bcc", "").strip()
 
+    to_list = [a.strip() for a in to.split(",") if a.strip()]
+
     msg = MIMEMultipart()
     msg["From"] = from_addr
-    msg["To"] = to
+    msg["To"] = ", ".join(to_list)
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
@@ -61,5 +63,5 @@ def send_invoice_email(
         smtp.ehlo()
         if user:
             smtp.login(user, password)
-        rcpt = [to] + ([bcc] if bcc else [])
+        rcpt = to_list + ([bcc] if bcc else [])
         smtp.send_message(msg, to_addrs=rcpt)
