@@ -54,7 +54,7 @@
     <div class="form-row" style="margin-bottom:16px;">
       <div class="field wide">
         <label>E-mail</label>
-        <input type="email" name="email" value="{{ customer.email if customer else '' }}">
+        <input type="text" name="email" value="{{ customer.email if customer else '' }}" placeholder="email@firma.cz, druhy@firma.cz">
       </div>
       <div class="field wide">
         <label>Poznámka</label>
