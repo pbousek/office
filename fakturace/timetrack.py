@@ -56,6 +56,14 @@ def list_entries(customer: str = None, date_from: str = None, date_to: str = Non
         conn.close()
 
 
+def get_entries_for_customer_month(customer: str, year: int, month: int) -> list[dict]:
+    import calendar
+    last_day = calendar.monthrange(year, month)[1]
+    date_from = f"{year}-{month:02d}-01"
+    date_to = f"{year}-{month:02d}-{last_day:02d}"
+    return list_entries(customer=customer, date_from=date_from, date_to=date_to)
+
+
 def list_customers() -> list[str]:
     conn = _get_conn()
     if not conn:

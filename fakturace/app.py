@@ -233,13 +233,14 @@ def send_invoice_form(inv_id: int, request: Request):
     settings = db.get_settings()
     items = db.get_items(inv_id)
     totals = db.calc_totals(items, bool(invoice["vat_payer"]))
-    default_body = (
-        f"Dobrý den,\n\n"
-        f"v příloze zasílám fakturu č. {invoice['number']} "
-        f"na částku {totals['total']:,.2f} {invoice['currency']} "
-        f"se splatností {invoice['due_date']}.\n\n"
-        f"S pozdravem"
-    ).replace(",", " ")
+    signature = settings.get("email_signature", "").strip()
+    template = settings.get("email_template", "Dobrý den,\n\nv příloze zasílám fakturu č. {number} na částku {total} {currency} se splatností {due_date}.\n\nS pozdravem")
+    default_body = template.format(
+        number=invoice["number"],
+        total=f"{totals['total']:,.2f}".replace(",", " "),
+        currency=invoice["currency"],
+        due_date=invoice["due_date"],
+    ) + (f"\n{signature}" if signature else "")
     return render("invoice_send.html", invoice=invoice, settings=settings,
                   to=invoice.get("customer_email", ""),
                   subject=f"Faktura {invoice['number']}",
@@ -256,6 +257,16 @@ async def send_invoice_submit(inv_id: int, request: Request):
     items = db.get_items(inv_id)
     totals = db.calc_totals(items, bool(invoice["vat_payer"]))
     pdf_bytes = generate_invoice_pdf(invoice, items, totals, settings)
+    isdoc_bytes = generate_isdocx(invoice, items, totals, settings) if form.get("attach_isdoc") else None
+    report_bytes = None
+    if form.get("attach_report"):
+        duzp = invoice.get("duzp") or invoice.get("issue_date", "")
+        if duzp and len(duzp) >= 7:
+            r_year, r_month = int(duzp[:4]), int(duzp[5:7])
+            cust_name = invoice.get("snap_name") or ""
+            entries = tt.get_entries_for_customer_month(cust_name, r_year, r_month) if cust_name else []
+            if entries:
+                report_bytes = bil.generate_billing_report(entries, r_year, r_month)
     try:
         send_invoice_email(
             to=form["to"],
@@ -264,6 +275,10 @@ async def send_invoice_submit(inv_id: int, request: Request):
             pdf_bytes=pdf_bytes,
             filename=f"faktura_{invoice['number']}.pdf",
             settings=settings,
+            isdoc_bytes=isdoc_bytes,
+            isdoc_filename=f"faktura_{invoice['number']}.isdocx",
+            report_bytes=report_bytes,
+            report_filename=f"vykaz_{invoice['number']}.pdf" if report_bytes else None,
         )
         db.update_invoice_status(inv_id, "sent")
         return RedirectResponse(url=f"/invoices/{inv_id}?sent=1", status_code=303)

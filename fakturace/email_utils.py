@@ -13,6 +13,10 @@ def send_invoice_email(
     pdf_bytes: bytes,
     filename: str,
     settings: dict,
+    isdoc_bytes: bytes = None,
+    isdoc_filename: str = None,
+    report_bytes: bytes = None,
+    report_filename: str = None,
 ):
     host = settings.get("smtp_host", "").strip()
     if not host:
@@ -34,6 +38,20 @@ def send_invoice_email(
     encoders.encode_base64(part)
     part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
     msg.attach(part)
+
+    if isdoc_bytes and isdoc_filename:
+        ipart = MIMEBase("application", "octet-stream")
+        ipart.set_payload(isdoc_bytes)
+        encoders.encode_base64(ipart)
+        ipart.add_header("Content-Disposition", f'attachment; filename="{isdoc_filename}"')
+        msg.attach(ipart)
+
+    if report_bytes and report_filename:
+        rpart = MIMEBase("application", "pdf")
+        rpart.set_payload(report_bytes)
+        encoders.encode_base64(rpart)
+        rpart.add_header("Content-Disposition", f'attachment; filename="{report_filename}"')
+        msg.attach(rpart)
 
     with smtplib.SMTP(host, port, timeout=15) as smtp:
         smtp.ehlo()

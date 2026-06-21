@@ -77,6 +77,8 @@ def init_db():
             "smtp_user": "",
             "smtp_pass": "",
             "smtp_from": "",
+            "email_signature": "",
+            "email_template": "Dobrý den,\n\nv příloze zasílám fakturu č. {number} na částku {total} {currency} se splatností {due_date}.\n\nS pozdravem",
         }
         for k, v in defaults.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))

@@ -31,7 +31,14 @@
       <label>Text zprávy</label>
       <textarea name="body" rows="8" style="width:100%;max-width:500px;font-family:inherit;">{{ body }}</textarea>
     </div>
-    <p style="font-size:13px;color:var(--muted);">Příloha: <b>faktura_{{ invoice.number }}.pdf</b></p>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+      Přílohy:
+      <b>faktura_{{ invoice.number }}.pdf</b>
+      &nbsp;
+      <label style="font-weight:normal;"><input type="checkbox" name="attach_isdoc"> ISDOC (.isdocx)</label>
+      &nbsp;
+      <label style="font-weight:normal;"><input type="checkbox" name="attach_report"> výkaz hodin (PDF)</label>
+    </div>
     <div style="display:flex;gap:8px;margin-top:8px;">
       <button type="submit" {% if not settings.smtp_host %}disabled{% endif %}>Odeslat</button>
       <a class="btn btn-secondary" href="/invoices/{{ invoice.id }}">Zrušit</a>
