@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Párování plateb</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Párování plateb</h2>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if folder_files %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Výpisy ve složce banka/</h2>
+  <form method="post" action="/bank/parse" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <select name="folder_file" style="flex:1;max-width:400px;">
+      {% for f in folder_files %}
+      <option value="{{ f }}">{{ f }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">Zpracovat výpis →</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Nahrát CSV výpis</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+    Stáhni výpis z Air Bank internetového bankovnictví (Přehled pohybů → Export → CSV) a nahraj sem.
+  </p>
+  <form method="post" action="/bank/parse" enctype="multipart/form-data">
+    <div class="form-group">
+      <input type="file" name="csv_file" accept=".csv" style="display:block;">
+    </div>
+    <button type="submit" class="btn" style="margin-top:8px;">Zpracovat výpis →</button>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

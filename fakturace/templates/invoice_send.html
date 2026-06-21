@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odeslat fakturu {{ invoice.number }}</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <h2>Odeslat fakturu {{ invoice.number }} mailem</h2>
+
+  {% if not settings.smtp_host %}
+  <div class="alert alert-warn">
+    SMTP není nakonfigurováno. <a class="link" href="/settings">Nastavte v Nastavení</a> (sekce E-mail / SMTP).
+  </div>
+  {% endif %}
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/invoices/{{ invoice.id }}/send">
+    <div class="form-group">
+      <label>Komu (e-mail)</label>
+      <input type="email" name="to" value="{{ to }}" required style="width:100%;max-width:400px;">
+    </div>
+    <div class="form-group">
+      <label>Předmět</label>
+      <input type="text" name="subject" value="{{ subject }}" required style="width:100%;max-width:400px;">
+    </div>
+    <div class="form-group">
+      <label>Text zprávy</label>
+      <textarea name="body" rows="8" style="width:100%;max-width:500px;font-family:inherit;">{{ body }}</textarea>
+    </div>
+    <p style="font-size:13px;color:var(--muted);">Příloha: <b>faktura_{{ invoice.number }}.pdf</b></p>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button type="submit" {% if not settings.smtp_host %}disabled{% endif %}>Odeslat</button>
+      <a class="btn btn-secondary" href="/invoices/{{ invoice.id }}">Zrušit</a>
+    </div>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

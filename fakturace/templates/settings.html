@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturace — Nastavení</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <h2>Nastavení — Moje firma</h2>
+  <form method="post" action="/settings">
+
+    <div class="form-row" style="margin-bottom:14px;">
+      <div class="field wide">
+        <label>Doplnit z ARES (IČO nebo název)</label>
+        <div class="ares-wrap">
+          <input type="text" id="ares-query" placeholder="např. 12345678 nebo název firmy" autocomplete="off"
+                 oninput="aresInput(this.value)"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();aresInput(this.value);}">
+          <ul class="ares-results" id="ares-results" style="display:none;"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>Název firmy / jméno</label>
+        <input type="text" name="company_name" id="f-name" value="{{ settings.company_name }}">
+      </div>
+      <div class="field narrow">
+        <label>IČO</label>
+        <input type="text" name="company_ico" id="f-ico" value="{{ settings.company_ico }}" maxlength="8">
+      </div>
+      <div class="field narrow">
+        <label>DIČ</label>
+        <input type="text" name="company_dic" id="f-dic" value="{{ settings.company_dic }}">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>Ulice</label>
+        <input type="text" name="company_street" id="f-street" value="{{ settings.company_street }}">
+      </div>
+      <div class="field narrow">
+        <label>PSČ</label>
+        <input type="text" name="company_zip" id="f-zip" value="{{ settings.company_zip }}" maxlength="6">
+      </div>
+      <div class="field wide">
+        <label>Město</label>
+        <input type="text" name="company_city" id="f-city" value="{{ settings.company_city }}">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>Telefon</label>
+        <input type="text" name="company_phone" value="{{ settings.company_phone }}" placeholder="+420 123 456 789">
+      </div>
+      <div class="field wide">
+        <label>E-mail</label>
+        <input type="text" name="company_email" value="{{ settings.company_email }}" placeholder="fakturace@firma.cz">
+      </div>
+      <div class="field wide">
+        <label>Web</label>
+        <input type="text" name="company_website" value="{{ settings.company_website }}" placeholder="www.firma.cz">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>Banka</label>
+        <input type="text" name="company_bank" value="{{ settings.company_bank }}" placeholder="Air Bank">
+      </div>
+      <div class="field wide">
+        <label>Číslo účtu</label>
+        <input type="text" name="company_account" value="{{ settings.company_account }}" placeholder="2377096048/3030">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>IBAN (pro QR platbu)</label>
+        <input type="text" name="company_iban" value="{{ settings.company_iban }}" placeholder="CZ60 3030 0000 0023 7709 6048">
+      </div>
+      <div class="field narrow">
+        <label>SWIFT / BIC</label>
+        <input type="text" name="company_swift" value="{{ settings.company_swift }}" placeholder="AIRACZPP">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field narrow">
+        <label>Prefix čísla faktury</label>
+        <input type="text" name="invoice_prefix" value="{{ settings.invoice_prefix }}" placeholder="FA">
+      </div>
+      <div class="field narrow">
+        <label>Příští číslo</label>
+        <input type="number" name="invoice_next" value="{{ settings.invoice_next }}" min="1">
+      </div>
+      <div class="field narrow">
+        <label>Splatnost (dny)</label>
+        <input type="number" name="due_days" value="{{ settings.due_days }}" min="0">
+      </div>
+      <div class="field narrow" style="justify-content:flex-end;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" name="vat_payer" value="1" style="width:auto;" {{ 'checked' if settings.vat_payer == '1' }}> Plátce DPH (výchozí)
+        </label>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field wide">
+        <label>Registrace (zobrazí se drobným písmem v patičce PDF)</label>
+        <input type="text" name="company_registration" value="{{ settings.company_registration }}"
+               placeholder="Fyzická osoba zapsaná v živnostenském rejstříku">
+      </div>
+    </div>
+    <button type="submit">Uložit nastavení</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>E-mail / SMTP</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+    Nastavení pro odesílání faktur e-mailem. Port 587 + STARTTLS (standardní).
+  </p>
+  <form method="post" action="/settings">
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>SMTP server</label>
+        <input type="text" name="smtp_host" value="{{ settings.smtp_host }}" placeholder="smtp.gmail.com">
+      </div>
+      <div class="field narrow">
+        <label>Port</label>
+        <input type="number" name="smtp_port" value="{{ settings.smtp_port or '587' }}" placeholder="587">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="field wide">
+        <label>Uživatel (login)</label>
+        <input type="text" name="smtp_user" value="{{ settings.smtp_user }}" placeholder="vas@email.cz">
+      </div>
+      <div class="field wide">
+        <label>Heslo / App password</label>
+        <input type="password" name="smtp_pass" value="{{ settings.smtp_pass }}">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field wide">
+        <label>Odesílatel (From) — pokud prázdné, použije se uživatel</label>
+        <input type="text" name="smtp_from" value="{{ settings.smtp_from }}" placeholder="Fakturace &lt;vas@email.cz&gt;">
+      </div>
+    </div>
+    <button type="submit">Uložit SMTP</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Razítko a podpis</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+    Obrázek (PNG nebo JPG) se zobrazí v pravém dolním rohu faktury. Ideálně průhledné PNG s razítkem nebo podpisem.
+  </p>
+  {% if stamp_exists %}
+  <div style="margin-bottom:14px;display:flex;align-items:flex-start;gap:16px;">
+    <img src="/settings/stamp?v={{ range(99999)|random }}" style="max-height:80px;max-width:220px;border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;" alt="razítko">
+    <form method="post" action="/settings/stamp/delete">
+      <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Smazat razítko?')">Smazat</button>
+    </form>
+  </div>
+  {% endif %}
+  <form method="post" action="/settings/stamp" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <input type="file" name="stamp_file" accept="image/png,image/jpeg,image/gif" style="flex:1;min-width:200px;">
+    <button type="submit" class="btn btn-secondary">{% if stamp_exists %}Nahradit{% else %}Nahrát{% endif %} obrázek</button>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div>
+
+<script>
+let aresTimer, aresCache = [];
+
+function aresInput(val) {
+  clearTimeout(aresTimer);
+  const list = document.getElementById('ares-results');
+  if (val.length < 2) { list.style.display = 'none'; return; }
+  list.innerHTML = '<li style="color:var(--muted);">Hledám…</li>';
+  list.style.display = 'block';
+  aresTimer = setTimeout(async () => {
+    try {
+      if (/^\d{6,8}$/.test(val.trim())) {
+        const res = await fetch('/ares/ico/' + val.trim());
+        if (res.ok) { fillForm(await res.json()); list.style.display = 'none'; return; }
+      }
+      const res = await fetch('/ares/search?q=' + encodeURIComponent(val));
+      const results = await res.json();
+      if (!results.length) { list.innerHTML = '<li style="color:var(--muted);">Nic nenalezeno.</li>'; return; }
+      aresCache = results;
+      list.innerHTML = results.map((r, i) =>
+        `<li onclick="fillForm(${i})"><b>${r.name}</b> <span style="color:var(--muted);font-size:12px;">IČO: ${r.ico} · ${r.city}</span></li>`
+      ).join('');
+    } catch(e) {
+      list.innerHTML = '<li style="color:var(--danger);">Chyba připojení k ARES.</li>';
+    }
+  }, 350);
+}
+
+function fillForm(data) {
+  if (typeof data === 'number') data = aresCache[data];
+  document.getElementById('f-name').value = data.name || '';
+  document.getElementById('f-ico').value = data.ico || '';
+  document.getElementById('f-dic').value = data.dic || '';
+  document.getElementById('f-street').value = data.street || '';
+  document.getElementById('f-zip').value = data.zip || '';
+  document.getElementById('f-city').value = data.city || '';
+  document.getElementById('ares-results').style.display = 'none';
+  document.getElementById('ares-query').value = '';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ares-wrap'))
+    document.getElementById('ares-results').style.display = 'none';
+});
+</script>
+</body></html>

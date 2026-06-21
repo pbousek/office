@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Výsledek hromadného importu</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Výsledek importu</h2>
+
+{% if imported %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">✓ Naimportováno ({{ imported | length }})</h2>
+  <table>
+    <thead><tr><th>Soubor</th><th>Číslo faktury</th><th></th></tr></thead>
+    <tbody>
+    {% for r in imported %}
+    <tr>
+      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td>{{ r.number }}</td>
+      <td><a class="link" href="/invoices/{{ r.inv_id }}">zobrazit</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if skipped %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;color:var(--orange);">Přeskočeno ({{ skipped | length }})</h2>
+  <table>
+    <thead><tr><th>Soubor</th><th>Důvod</th><th></th></tr></thead>
+    <tbody>
+    {% for r in skipped %}
+    <tr>
+      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td style="color:var(--orange);">{{ r.reason }}</td>
+      <td><a class="link" href="/import/file/{{ r.filename }}">načíst ručně →</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if errors %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;color:var(--danger);">Chyby ({{ errors | length }})</h2>
+  {% for e in errors %}
+  <div style="font-size:13px;color:var(--danger);margin-bottom:4px;">{{ e }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not imported and not skipped and not errors %}
+<div class="card"><div class="empty">Nic k importu nebylo vybráno.</div></div>
+{% endif %}
+
+<a class="btn" href="/">← Přejít na přehled faktur</a>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturace — {{ 'Nová faktura' if not invoice else 'Upravit ' + invoice.number }}</title>
+<link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <h2>{{ 'Nová faktura' if not invoice else 'Upravit ' + invoice.number }}</h2>
+  <form method="post" action="{{ '/invoices/add' if not invoice else '/invoices/' + invoice.id|string + '/edit' }}">
+
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field narrow">
+        <label>Číslo faktury</label>
+        <input type="text" name="number" value="{{ number }}" required {% if invoice %}readonly{% endif %}>
+      </div>
+      <div class="field narrow">
+        <label>Datum vystavení</label>
+        <input type="date" name="issue_date" value="{{ issue_date }}" required>
+      </div>
+      <div class="field narrow">
+        <label>Datum splatnosti</label>
+        <input type="date" name="due_date" value="{{ due_date }}" required>
+      </div>
+      <div class="field narrow">
+        <label>DUZP</label>
+        <input type="date" name="duzp" value="{{ invoice.duzp if invoice and invoice.duzp else issue_date }}">
+      </div>
+      <div class="field narrow">
+        <label>Měna</label>
+        <select name="currency">
+          <option value="CZK" {{ 'selected' if (invoice and invoice.currency == 'CZK') or not invoice }}>CZK</option>
+          <option value="EUR" {{ 'selected' if invoice and invoice.currency == 'EUR' }}>EUR</option>
+        </select>
+      </div>
+      <div class="field narrow" style="justify-content:flex-end;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" name="vat_payer" value="1" style="width:auto;" {{ 'checked' if vat_payer }}> Plátce DPH
+        </label>
+      </div>
+    </div>
+
+    <!-- Customer -->
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field wide">
+        <label>Zákazník</label>
+        <select name="customer_id" required>
+          <option value="" disabled {{ 'selected' if not invoice }}>— vyberte zákazníka —</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}" {{ 'selected' if invoice and invoice.customer_id == c.id }}>{{ c.name }}{% if c.ico %} (IČO: {{ c.ico }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field fixed" style="justify-content:flex-end;gap:6px;">
+        <label>&nbsp;</label>
+        <a class="btn btn-secondary btn-sm" href="/customers/new" target="_blank">+ Nový zákazník</a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="refreshCustomers()" title="Obnovit seznam zákazníků">↻</button>
+      </div>
+    </div>
+
+    <!-- TimeTrack import -->
+    {% if tt_available %}
+    <div class="card" style="background:var(--bg);margin-bottom:12px;">
+      <h2 style="font-size:13px;">Import ze záznamu z TimeTracku</h2>
+      <div class="form-row">
+        <div class="field wide">
+          <label>Zákazník v TimeTracku</label>
+          <select id="tt-customer">
+            <option value="">— vyberte —</option>
+            {% for c in tt_customers %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field narrow">
+          <label>Od</label>
+          <input type="date" id="tt-from">
+        </div>
+        <div class="field narrow">
+          <label>Do</label>
+          <input type="date" id="tt-to">
+        </div>
+        <div class="field fixed">
+          <label>&nbsp;</label>
+          <button type="button" onclick="loadTTEntries()" class="btn btn-secondary">Načíst záznamy</button>
+        </div>
+      </div>
+      <div id="tt-preview" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+    </div>
+    {% endif %}
+
+    <!-- Items -->
+    <div class="items-section">
+      <h2>Položky</h2>
+      <table id="items-table">
+        <thead><tr>
+          <th>Popis</th><th style="width:80px;">Množství</th><th style="width:70px;">Jednotka</th>
+          <th style="width:110px;">Cena/j. (Kč)</th>
+          <th class="vat-col" style="width:90px;display:none;">Sazba DPH</th>
+          <th style="width:30px;"></th>
+        </tr></thead>
+        <tbody id="items-body">
+          {% for i, it in items | enumerate %}
+          <tr>
+            <td><input type="text" name="desc_{{ i }}" value="{{ it.description }}" required placeholder="Popis položky"></td>
+            <td><input type="number" name="qty_{{ i }}" value="{{ it.quantity }}" step="0.01" min="0"></td>
+            <td><input type="text" name="unit_{{ i }}" value="{{ it.unit }}"></td>
+            <td><input type="number" name="price_{{ i }}" value="{{ it.unit_price }}" step="0.01" min="0"></td>
+            <td class="vat-col" style="display:none;"><select name="vat_{{ i }}">
+              <option value="0" {{ 'selected' if it.vat_rate==0 }}>0 %</option>
+              <option value="12" {{ 'selected' if it.vat_rate==12 }}>12 %</option>
+              <option value="21" {{ 'selected' if it.vat_rate==21 }}>21 %</option>
+            </select></td>
+            <td><button type="button" class="btn-danger" onclick="this.closest('tr').remove()">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-secondary btn-sm add-row-btn" onclick="addRow()">+ Přidat položku</button>
+    </div>
+
+    <div class="field wide" style="margin-top:16px;">
+      <label>Poznámka</label>
+      <textarea name="note">{{ invoice.note if invoice else '' }}</textarea>
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button type="submit">Uložit fakturu</button>
+      <a class="btn btn-secondary" href="/">Zrušit</a>
+    </div>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div>
+
+<script>
+let rowIdx = {{ items | length }};
+
+function addRow(desc, qty, unit, price) {
+  const i = rowIdx++;
+  const vatVisible = document.querySelector('.vat-col') && document.querySelector('.vat-col').style.display !== 'none';
+  const vatCell = `<td class="vat-col" style="display:${vatVisible?'':'none'}"><select name="vat_${i}">
+    <option value="0">0 %</option><option value="12">12 %</option><option value="21">21 %</option>
+  </select></td>`;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="desc_${i}" value="${desc||''}" required placeholder="Popis položky"></td>
+    <td><input type="number" name="qty_${i}" value="${qty||1}" step="0.01" min="0"></td>
+    <td><input type="text" name="unit_${i}" value="${unit||'hod'}"></td>
+    <td><input type="number" name="price_${i}" value="${price||''}" step="0.01" min="0"></td>
+    ${vatCell}
+    <td><button type="button" class="btn-danger" onclick="this.closest('tr').remove()">✕</button></td>`;
+  document.getElementById('items-body').appendChild(tr);
+}
+
+// Toggle VAT column visibility
+document.querySelector('[name=vat_payer]').addEventListener('change', function() {
+  document.querySelectorAll('.vat-col').forEach(el => el.style.display = this.checked ? '' : 'none');
+});
+// Init VAT column state
+if (document.querySelector('[name=vat_payer]').checked) {
+  document.querySelectorAll('.vat-col').forEach(el => el.style.display = '');
+}
+
+{% if tt_available %}
+const customerTariffs = {{ customer_tariffs | tojson }};
+
+async function loadTTEntries() {
+  const customer = document.getElementById('tt-customer').value;
+  const from = document.getElementById('tt-from').value;
+  const to = document.getElementById('tt-to').value;
+  if (!customer) { alert('Vyberte zákazníka'); return; }
+  const params = new URLSearchParams({ customer, date_from: from, date_to: to });
+  const res = await fetch('/timetrack/entries?' + params);
+  const entries = await res.json();
+  if (!entries.length) {
+    document.getElementById('tt-preview').textContent = 'Žádné záznamy.';
+    return;
+  }
+  const totalH = entries.reduce((s, e) => s + e.hours, 0);
+  document.getElementById('tt-preview').innerHTML =
+    `Nalezeno ${entries.length} záznamů, celkem ${totalH.toFixed(2)} h. ` +
+    `<button type="button" onclick="importTT(${JSON.stringify(entries).replace(/"/g,'&quot;')},'${from}')" class="btn btn-secondary btn-sm">Přidat jako položky</button>`;
+}
+
+function applyTariff(totalHours, tariff, year, month) {
+  const items = [];
+  const label = `${month}/${year}`;
+  const included = parseFloat(tariff.included_hours || 0);
+  for (const fi of (tariff.fixed_items || [])) {
+    if (!fi.description) continue;
+    items.push({ desc: fi.description + ' ' + label, qty: 1, unit: fi.unit || 'měs', price: fi.price });
+  }
+  let consumed = 0, remaining = totalHours;
+  for (const tier of (tariff.tiers || [])) {
+    if (remaining <= 0.001) break;
+    const upTo = tier.up_to;
+    const tierH = upTo !== null ? Math.min(remaining, upTo - consumed) : remaining;
+    const billable = Math.max(0, tierH - Math.max(0, included - consumed));
+    if (billable > 0.001)
+      items.push({ desc: tier.description + ' ' + label, qty: Math.round(billable * 100) / 100, unit: 'hod', price: tier.rate });
+    consumed += tierH;
+    remaining -= tierH;
+  }
+  return items;
+}
+
+function importTT(entries, dateFrom) {
+  const totalH = Math.round(entries.reduce((s, e) => s + e.hours, 0) * 100) / 100;
+  const custId = parseInt(document.querySelector('[name=customer_id]').value);
+  const tariff = customerTariffs[custId];
+  const hasTariff = tariff && ((tariff.fixed_items && tariff.fixed_items.length) || (tariff.tiers && tariff.tiers.length));
+
+  if (hasTariff && dateFrom) {
+    const [year, month] = dateFrom.split('-').map(Number);
+    const items = applyTariff(totalH, tariff, year, month);
+    if (items.length) {
+      items.forEach(it => addRow(it.desc, it.qty, it.unit, it.price));
+      document.getElementById('tt-preview').textContent = 'Položky přidány ↓';
+      return;
+    }
+  }
+  addRow('Práce', totalH, 'hod', '');
+  document.getElementById('tt-preview').textContent = 'Položky přidány ↓';
+}
+{% endif %}
+
+async function refreshCustomers() {
+  const sel = document.querySelector('[name=customer_id]');
+  const current = sel.value;
+  const res = await fetch('/customers/json');
+  const customers = await res.json();
+  const placeholder = sel.querySelector('option[value=""]');
+  sel.innerHTML = '';
+  if (placeholder) sel.appendChild(placeholder);
+  customers.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name + (c.ico ? ` (IČO: ${c.ico})` : '');
+    if (String(c.id) === String(current)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshCustomers();
+});
+</script>
+</body></html>

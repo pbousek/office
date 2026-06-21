@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturovat {{ customer.name }} {{ month }}/{{ year }}</title>
+<link rel="stylesheet" href="/static/style.css?v=4">
+<style>
+.section-title { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase;
+                 letter-spacing: .04em; margin: 0 0 8px 0; }
+</style>
+</head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="page-header" style="margin-bottom:16px;">
+  <div>
+    <h1 style="font-size:20px;margin:0;">{{ customer.name }}</h1>
+    <div style="color:var(--muted);font-size:14px;">{{ month_name }} {{ year }}</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    {% if tt_available %}
+    <a class="btn btn-secondary btn-sm"
+       href="/billing/report?customer_id={{ customer.id }}&year={{ year }}&month={{ month }}"
+       target="_blank">Stáhnout výkaz PDF</a>
+    {% endif %}
+    <form method="post" action="/billing/create">
+      <input type="hidden" name="customer_id" value="{{ customer.id }}">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <button type="submit" class="btn" onclick="return confirm('Vytvořit fakturu?')">Vytvořit fakturu</button>
+    </form>
+  </div>
+</div>
+
+{% if not tariff %}
+<div class="alert alert-warn">Zákazník nemá nastavený tarif. <a class="link" href="/customers/{{ customer.id }}/tariff">Nastavit tarif</a></div>
+{% else %}
+
+{% if not tt_available %}
+<div class="alert alert-warn">TimeTrack není dostupný (DB nenalezena).</div>
+{% elif not entries %}
+<div class="alert alert-warn">
+  Žádné záznamy v TimeTracku pro zákazníka
+  <b>{{ tariff.get('timetrack_customer') or customer.name }}</b>
+  za {{ month_name }} {{ year }}.
+</div>
+{% else %}
+<div style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+  TimeTrack: <b>{{ entries|length }}</b> záznamů, celkem <b>{{ total_hours | fmt_hours }} h</b>
+</div>
+{% endif %}
+
+<div class="card">
+  <p class="section-title">Položky faktury</p>
+  {% if items %}
+  <table>
+    <thead><tr><th>Popis</th><th class="num">Počet</th><th>Jedn.</th><th class="num">Cena/j</th>{% if vat_payer %}<th class="num">DPH</th>{% endif %}<th class="num">Celkem</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+    {% set line_total = it.quantity * it.unit_price %}
+    <tr>
+      <td>{{ it.description }}</td>
+      <td class="num">{{ it.quantity }}</td>
+      <td>{{ it.unit }}</td>
+      <td class="num">{{ it.unit_price | money }}</td>
+      {% if vat_payer %}<td class="num">{{ it.vat_rate }} %</td>{% endif %}
+      <td class="num">{{ line_total | money }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="totals-block" style="margin-top:12px;">
+    {% if vat_payer %}
+    <div class="total-line">Základ: <b>{{ totals.subtotal | money }} Kč</b></div>
+    {% for vl in totals.vat_lines %}
+    <div class="total-line">DPH {{ vl.rate }} %: <b>{{ vl.vat | money }} Kč</b></div>
+    {% endfor %}
+    {% endif %}
+    <div class="grand-total">K úhradě: {{ totals.total | money }} Kč</div>
+  </div>
+  {% else %}
+  <div class="empty">Žádné položky (0 hodin a žádné fixní položky).</div>
+  {% endif %}
+</div>
+
+{% endif %}
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

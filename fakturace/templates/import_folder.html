@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Import ze složky</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Import ze složky</h2>
+
+{% set importable = results | selectattr("customer_id") | rejectattr("already_imported") | rejectattr("error") | list %}
+{% set already = results | selectattr("already_imported") | list %}
+{% set unknown = results | rejectattr("customer_id") | rejectattr("already_imported") | rejectattr("error") | list %}
+{% set errored = results | selectattr("error") | list %}
+
+<div class="stats-grid" style="margin-bottom:18px;">
+  <div class="stat-card highlight">
+    <div class="stat-label">Připraveno k importu</div>
+    <div class="stat-value">{{ importable | length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Už importováno</div>
+    <div class="stat-value">{{ already | length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Neznámý zákazník</div>
+    <div class="stat-value">{{ unknown | length }}</div>
+  </div>
+  {% if errored %}
+  <div class="stat-card danger">
+    <div class="stat-label">Chyby</div>
+    <div class="stat-value">{{ errored | length }}</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if importable %}
+<div class="card">
+  <form method="post" action="/import/batch">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="font-size:16px;margin:0;">Připraveno k importu ({{ importable | length }})</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="checkAll(true)">Vybrat vše</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="checkAll(false)">Zrušit výběr</button>
+        <select name="import_status" title="Status po importu">
+          <option value="paid" selected>→ Zaplaceno</option>
+          <option value="sent">→ Odesláno</option>
+          <option value="draft">→ Návrh</option>
+        </select>
+        <button type="submit" class="btn">⬆ Importovat vybrané</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:30px;"><input type="checkbox" id="chk-all" onchange="checkAll(this.checked)" checked></th>
+        <th>Soubor</th>
+        <th>Číslo</th>
+        <th>Datum</th>
+        <th>Zákazník</th>
+        <th class="num">Částka</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for r in importable %}
+      <tr>
+        <td><input type="checkbox" name="files" value="{{ r.filename }}" checked></td>
+        <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+        <td>{{ r.number }}</td>
+        <td>{{ r.issue_date }}</td>
+        <td>{{ r.customer_name }}</td>
+        <td class="num">{{ "{:,.0f}".format(r.total).replace(",", " ") }} Kč</td>
+        <td><a class="link" href="/import/file/{{ r.filename }}">zkontrolovat</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </form>
+</div>
+{% endif %}
+
+{% if unknown %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Neznámý zákazník — nutná ruční kontrola ({{ unknown | length }})</h2>
+  <table>
+    <thead><tr>
+      <th>Soubor</th><th>Číslo</th><th>Datum</th><th>IČO zákazníka</th><th class="num">Částka</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for r in unknown %}
+    <tr>
+      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td>{{ r.number }}</td>
+      <td>{{ r.issue_date }}</td>
+      <td>{{ r.customer_ico or "—" }}</td>
+      <td class="num">{{ "{:,.0f}".format(r.total).replace(",", " ") }} Kč</td>
+      <td><a class="btn btn-secondary btn-sm" href="/import/file/{{ r.filename }}">Načíst →</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if already %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Již importováno ({{ already | length }})</h2>
+  <table>
+    <thead><tr>
+      <th>Soubor</th><th>Číslo faktury</th><th>Datum</th><th>Zákazník</th><th class="num">Částka</th>
+    </tr></thead>
+    <tbody>
+    {% for r in already %}
+    <tr style="opacity:0.6;">
+      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td>{{ r.number }}</td>
+      <td>{{ r.issue_date }}</td>
+      <td>{{ r.customer_name }}</td>
+      <td class="num">{{ "{:,.0f}".format(r.total).replace(",", " ") }} Kč</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if errored %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;color:var(--danger);">Chyby při čtení ({{ errored | length }})</h2>
+  {% for r in errored %}
+  <div style="font-size:13px;margin-bottom:4px;"><b>{{ r.filename }}</b>: {{ r.error }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<footer>Fakturace · běží lokálně</footer>
+</div>
+<script>
+function checkAll(checked) {
+  document.querySelectorAll('input[name="files"]').forEach(cb => cb.checked = checked);
+  const chkAll = document.getElementById('chk-all');
+  if (chkAll) chkAll.checked = checked;
+}
+</script>
+</body></html>

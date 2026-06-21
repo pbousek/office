@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kontrola importované faktury</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Kontrola importované faktury</h2>
+
+{% if parsed.warnings %}
+<div class="alert alert-warn">
+  {% for w in parsed.warnings %}<div>⚠ {{ w }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" action="/import/save">
+
+<!-- Základní údaje -->
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Základní údaje</h2>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Číslo faktury</label>
+      <input type="text" name="number" value="{{ parsed.number }}" required>
+    </div>
+    <div class="form-group">
+      <label>Datum vystavení</label>
+      <input type="date" name="issue_date" value="{{ parsed.issue_date }}" required>
+    </div>
+    <div class="form-group">
+      <label>Datum splatnosti</label>
+      <input type="date" name="due_date" value="{{ parsed.due_date }}" required>
+    </div>
+    <div class="form-group">
+      <label>Měna</label>
+      <select name="currency">
+        <option value="CZK" selected>CZK</option>
+        <option value="EUR">EUR</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" name="vat_payer" value="1" {% if parsed.vat_payer %}checked{% endif %}>
+        Plátce DPH
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Status po importu</label>
+      <select name="import_status">
+        <option value="paid" selected>Zaplaceno</option>
+        <option value="sent">Odesláno</option>
+        <option value="draft">Návrh</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Zákazník -->
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Zákazník</h2>
+
+  {% if existing_customer %}
+  <div class="alert alert-ok">
+    Zákazník nalezen v databázi: <b>{{ existing_customer.name }}</b> (IČO: {{ existing_customer.ico }})
+  </div>
+  <input type="hidden" name="customer_id" value="{{ existing_customer.id }}">
+
+  {% elif ares_customer %}
+  <div class="alert alert-warn">
+    Zákazník nebyl nalezen v databázi — data načtena z ARES. Bude vytvořen nový zákazník.
+  </div>
+  <input type="hidden" name="customer_id" value="__new__">
+  <div class="form-row">
+    <div class="form-group">
+      <label>Název</label>
+      <input type="text" name="new_name" value="{{ ares_customer.name }}" required>
+    </div>
+    <div class="form-group">
+      <label>IČO</label>
+      <input type="text" name="new_ico" value="{{ ares_customer.ico }}">
+    </div>
+    <div class="form-group">
+      <label>DIČ</label>
+      <input type="text" name="new_dic" value="{{ ares_customer.dic }}">
+    </div>
+    <div class="form-group">
+      <label>Ulice</label>
+      <input type="text" name="new_street" value="{{ ares_customer.street }}">
+    </div>
+    <div class="form-group">
+      <label>Město</label>
+      <input type="text" name="new_city" value="{{ ares_customer.city }}">
+    </div>
+    <div class="form-group">
+      <label>PSČ</label>
+      <input type="text" name="new_zip" value="{{ ares_customer.zip }}">
+    </div>
+  </div>
+
+  {% elif parsed.customer_ico %}
+  <div class="alert alert-warn">
+    Zákazník s IČO {{ parsed.customer_ico }} nebyl nalezen v ARES ani v databázi.
+    Vyber existujícího zákazníka nebo vyplň ručně.
+  </div>
+  <div class="form-group">
+    <label>Vybrat existujícího zákazníka</label>
+    <select name="customer_id" onchange="toggleNewCustomer(this.value)">
+      <option value="__new__">— vytvořit nového —</option>
+      {% for c in customers %}
+      <option value="{{ c.id }}">{{ c.name }}{% if c.ico %} (IČO: {{ c.ico }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="new-customer-fields">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Název</label>
+        <input type="text" name="new_name" value="{{ parsed.customer_name }}">
+      </div>
+      <div class="form-group">
+        <label>IČO</label>
+        <input type="text" name="new_ico" value="{{ parsed.customer_ico }}">
+      </div>
+      <div class="form-group">
+        <label>DIČ</label>
+        <input type="text" name="new_dic" value="{{ parsed.customer_dic }}">
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alert alert-warn">IČO zákazníka nebylo rozpoznáno. Vyber existujícího zákazníka.</div>
+  <div class="form-group">
+    <label>Zákazník</label>
+    <select name="customer_id" required>
+      {% for c in customers %}
+      <option value="{{ c.id }}">{{ c.name }}{% if c.ico %} (IČO: {{ c.ico }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Položky -->
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Položky</h2>
+  <table id="items-table">
+    <thead><tr>
+      <th>Popis</th>
+      <th class="num" style="width:80px;">Množství</th>
+      <th style="width:70px;">Jedn.</th>
+      <th class="num" style="width:100px;">Cena/j.</th>
+      <th class="num" style="width:80px;">Sazba DPH</th>
+      <th style="width:30px;"></th>
+    </tr></thead>
+    <tbody>
+    {% for it in parsed_items %}
+    <tr>
+      <td><input type="text" name="desc_{{ loop.index0 }}" value="{{ it.description }}" style="width:100%;box-sizing:border-box;"></td>
+      <td><input type="number" name="qty_{{ loop.index0 }}" value="{{ it.quantity }}" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+      <td><select name="unit_{{ loop.index0 }}">
+        {% for u in ['hod','ks','den','měs','km','m','m²','m³','t','kWh'] %}
+        <option value="{{ u }}" {% if it.unit == u %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+      </select></td>
+      <td><input type="number" name="price_{{ loop.index0 }}" value="{{ it.unit_price }}" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+      <td><select name="vat_{{ loop.index0 }}">
+        <option value="0" {% if it.vat_rate == 0 %}selected{% endif %}>0 %</option>
+        <option value="12" {% if it.vat_rate == 12 %}selected{% endif %}>12 %</option>
+        <option value="21" {% if it.vat_rate == 21 %}selected{% endif %}>21 %</option>
+      </select></td>
+      <td><button type="button" onclick="this.closest('tr').remove()" class="btn-danger btn-sm" title="Odebrat">×</button></td>
+    </tr>
+    {% endfor %}
+    {% if not parsed_items %}
+    <tr>
+      <td><input type="text" name="desc_0" placeholder="Popis položky" style="width:100%;box-sizing:border-box;"></td>
+      <td><input type="number" name="qty_0" value="1" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+      <td><select name="unit_0"><option>hod</option><option>ks</option><option>den</option></select></td>
+      <td><input type="number" name="price_0" value="0" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+      <td><select name="vat_0"><option value="0">0 %</option><option value="12">12 %</option><option value="21">21 %</option></select></td>
+      <td><button type="button" onclick="this.closest('tr').remove()" class="btn-danger btn-sm">×</button></td>
+    </tr>
+    {% endif %}
+    </tbody>
+  </table>
+  <button type="button" onclick="addRow()" class="btn btn-secondary btn-sm" style="margin-top:8px;">+ Přidat položku</button>
+</div>
+
+<!-- Poznámka -->
+<div class="card">
+  <div class="form-group">
+    <label>Poznámka (nepovinné)</label>
+    <input type="text" name="note" value="">
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;">
+  <button type="submit" class="btn">Uložit fakturu</button>
+  <a href="/import" class="btn btn-secondary">Zrušit</a>
+</div>
+
+</form>
+
+<script>
+let rowCount = {{ parsed_items | length if parsed_items else 1 }};
+
+function addRow() {
+  const i = rowCount++;
+  const tbody = document.querySelector('#items-table tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="desc_${i}" placeholder="Popis" style="width:100%;box-sizing:border-box;"></td>
+    <td><input type="number" name="qty_${i}" value="1" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+    <td><select name="unit_${i}"><option>hod</option><option>ks</option><option>den</option><option>měs</option></select></td>
+    <td><input type="number" name="price_${i}" value="0" step="0.01" min="0" style="width:100%;text-align:right;box-sizing:border-box;"></td>
+    <td><select name="vat_${i}"><option value="0">0 %</option><option value="12">12 %</option><option value="21">21 %</option></select></td>
+    <td><button type="button" onclick="this.closest('tr').remove()" class="btn-danger btn-sm">×</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function toggleNewCustomer(val) {
+  const fields = document.getElementById('new-customer-fields');
+  if (fields) fields.style.display = val === '__new__' ? '' : 'none';
+}
+</script>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

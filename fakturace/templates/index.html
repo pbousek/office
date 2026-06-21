@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturace</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+
+{% include "_nav.html" %}
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Vyfakturováno {{ stats.month }}/{{ stats.year }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(stats.by_month).replace(",", " ") }} Kč</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Zaplaceno {{ stats.month }}/{{ stats.year }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(stats.paid_month).replace(",", " ") }} Kč</div>
+  </div>
+  <div class="stat-card highlight">
+    <div class="stat-label">Vyfakturováno {{ stats.year }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(stats.by_year).replace(",", " ") }} Kč</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Zaplaceno {{ stats.year }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(stats.paid_year).replace(",", " ") }} Kč</div>
+  </div>
+  {% if stats.overdue > 0 %}
+  <div class="stat-card danger">
+    <div class="stat-label">Po splatnosti</div>
+    <div class="stat-value">{{ "{:,.0f}".format(stats.overdue).replace(",", " ") }} Kč</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <form method="get" action="/" style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Hledat zákazníka nebo číslo faktury…" style="flex:1;max-width:340px;">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="dir" value="{{ dir }}">
+    <button type="submit" class="btn btn-secondary btn-sm">Hledat</button>
+    {% if q %}<a class="btn btn-secondary btn-sm" href="/">Zrušit</a>{% endif %}
+  </form>
+  {% if invoices %}
+  {% macro sort_link(col, label) %}
+    {% set new_dir = 'asc' if (sort == col and dir == 'desc') else 'desc' %}
+    <a class="link" href="/?sort={{ col }}&dir={{ new_dir }}&q={{ q }}" style="color:inherit;font-weight:{% if sort==col %}700{% else %}600{% endif %};">
+      {{ label }}{% if sort == col %} {{ '↑' if dir == 'asc' else '↓' }}{% endif %}
+    </a>
+  {% endmacro %}
+  <table>
+    <thead><tr>
+      <th>{{ sort_link('number', 'Číslo') }}</th>
+      <th>{{ sort_link('customer_name', 'Zákazník') }}</th>
+      <th>{{ sort_link('issue_date', 'Vystaveno') }}</th>
+      <th>{{ sort_link('due_date', 'Splatnost') }}</th>
+      <th class="num">{{ sort_link('total', 'Částka') }}</th>
+      <th>{{ sort_link('status', 'Stav') }}</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    {% for inv in invoices %}
+    {% set items = inv | list %}
+    <tr>
+      <td><a class="link" href="/invoices/{{ inv.id }}">{{ inv.number }}</a></td>
+      <td>{{ inv.customer_name }}</td>
+      <td>{{ inv.issue_date }}</td>
+      <td {% if inv.status not in ('paid','cancelled') and inv.due_date < today %}style="color:var(--danger);font-weight:600"{% endif %}>{{ inv.due_date }}</td>
+      <td class="num">{{ "{:,.0f}".format(inv.total).replace(",", " ") }} {{ inv.currency }}</td>
+      <td><span class="badge badge-{{ inv.status }}">{{ {'draft':'Návrh','sent':'Odesláno','paid':'Zaplaceno','cancelled':'Storno'}[inv.status] }}</span></td>
+      <td class="actions">
+        <a class="link" href="/invoices/{{ inv.id }}">detail</a>
+        <a class="link" href="/invoices/{{ inv.id }}/edit">upravit</a>
+        <a class="link" href="/invoices/{{ inv.id }}/pdf">PDF</a>
+        <a class="link" href="/invoices/{{ inv.id }}/isdocx">ISDOCX</a>
+        <form method="post" action="/invoices/{{ inv.id }}/clone" style="display:inline;line-height:1">
+          <button type="submit" class="btn-link" style="vertical-align:baseline">klonovat</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    {% if q %}Žádné faktury odpovídající „{{ q }}". <a class="link" href="/">Zobrazit vše →</a>
+    {% else %}Zatím žádné faktury. <a class="link" href="/invoices/new">Vytvořit první fakturu →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<footer>Fakturace · běží lokálně · data v data/fakturace.db</footer>
+</div></body></html>

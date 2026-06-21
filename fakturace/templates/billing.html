@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturace — Fakturovat</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <h2>Fakturovat dle tarifu</h2>
+  <form method="get" action="/billing/preview" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <div class="field" style="flex:1 1 200px;">
+      <label>Zákazník</label>
+      <select name="customer_id" required>
+        <option value="">— vyberte —</option>
+        {% for c in customers %}
+        <option value="{{ c.id }}"
+          {% if c.id == selected_customer_id %}selected{% endif %}
+          {% if not c.tariff or c.tariff == '{}' %}style="color:var(--muted)"{% endif %}>
+          {{ c.name }}{% if not c.tariff or c.tariff == '{}' %} (bez tarifu){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="flex:0 1 120px;">
+      <label>Rok</label>
+      <select name="year">
+        {% for y in years %}
+        <option value="{{ y }}" {% if y == today.year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="flex:0 1 150px;">
+      <label>Měsíc</label>
+      <select name="month">
+        {% for num, name in months %}
+        <option value="{{ num }}" {% if num == today.month %}selected{% endif %}>{{ num }} — {{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field fixed">
+      <label>&nbsp;</label>
+      <button type="submit">Zobrazit náhled</button>
+    </div>
+  </form>
+</div>
+
+{% if customers %}
+<div class="card">
+  <h2>Zákazníci s tarifem</h2>
+  <table>
+    <thead><tr><th>Zákazník</th><th>TimeTrack</th><th>Zahrnuté h</th><th>Fixní položky</th><th>Tiery</th><th></th></tr></thead>
+    <tbody>
+    {% for c in customers %}
+    {% if c.tariff and c.tariff != '{}' %}
+    {% set t = c.tariff | fromjson %}
+    <tr>
+      <td><b>{{ c.name }}</b></td>
+      <td>{{ t.get('timetrack_customer', '') or '—' }}</td>
+      <td>{{ t.get('included_hours', 0) }} h</td>
+      <td>{{ t.get('fixed_items', [])|length }}</td>
+      <td>{{ t.get('tiers', [])|length }}</td>
+      <td><a class="link" href="/customers/{{ c.id }}/tariff">upravit tarif</a></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

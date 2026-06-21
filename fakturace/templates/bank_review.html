@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Párování plateb — kontrola</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Párování plateb <span style="font-weight:400;color:var(--muted);font-size:13px;">· {{ source }}</span></h2>
+
+{% set new_count = to_confirm | length %}
+{% set paid_count = already_paid | length %}
+{% set unmatch_count = unmatched | length %}
+
+<div class="stats-grid" style="margin-bottom:18px;">
+  <div class="stat-card highlight">
+    <div class="stat-label">Ke spárování</div>
+    <div class="stat-value">{{ new_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Už zaplaceno</div>
+    <div class="stat-value">{{ paid_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Nespárováno</div>
+    <div class="stat-value">{{ unmatch_count }}</div>
+  </div>
+</div>
+
+{% if to_confirm %}
+<form method="post" action="/bank/confirm">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="font-size:16px;margin:0;">Spárované platby — označit jako Zaplaceno ({{ new_count }})</h2>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="checkAll(true)">Vybrat vše</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="checkAll(false)">Zrušit výběr</button>
+        <button type="submit" class="btn btn-green">✓ Potvrdit zaplacení</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:30px;"><input type="checkbox" id="chk-all" onchange="checkAll(this.checked)" checked></th>
+        <th>Faktura</th>
+        <th>Zákazník</th>
+        <th class="num">Fakturováno</th>
+        <th>Přijato</th>
+        <th class="num">Přijatá částka</th>
+        <th>Datum platby</th>
+        <th>Shoda</th>
+      </tr></thead>
+      <tbody>
+      {% for r in to_confirm %}
+      {% set inv = r.match %}
+      <tr>
+        <td>
+          <input type="checkbox" name="confirm_{{ inv.id }}" value="1" checked>
+          <input type="hidden" name="inv_id" value="{{ inv.id }}">
+          <input type="hidden" name="paid_date" value="{{ r.date }}">
+        </td>
+        <td><a class="link" href="/invoices/{{ inv.id }}" target="_blank">{{ inv.number }}</a></td>
+        <td>{{ inv.customer_name }}</td>
+        <td class="num">{{ "{:,.0f}".format(inv.total).replace(",", " ") }} {{ inv.currency }}</td>
+        <td>{{ r.counterparty }}</td>
+        <td class="num" style="{% if r.amount != inv.total %}color:var(--orange);font-weight:600;{% endif %}">
+          {{ "{:,.0f}".format(r.amount).replace(",", " ") }} {{ r.currency }}
+          {% if r.amount != inv.total %} ⚠{% endif %}
+        </td>
+        <td>{{ r.date }}</td>
+        <td>
+          {% if r.match_type == 'vs' %}
+            <span style="color:var(--green);font-size:12px;">VS {{ r.vs }}</span>
+          {% else %}
+            <span style="color:var(--orange);font-size:12px;">částka</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% endif %}
+
+{% if already_paid %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;color:var(--muted);">Platby pro již zaplacené faktury ({{ paid_count }})</h2>
+  <table>
+    <thead><tr>
+      <th>Faktura</th><th>Zákazník</th><th class="num">Částka</th><th>Datum</th><th>VS</th>
+    </tr></thead>
+    <tbody>
+    {% for r in already_paid %}
+    <tr style="opacity:0.6;">
+      <td><a class="link" href="/invoices/{{ r.match.id }}" target="_blank">{{ r.match.number }}</a></td>
+      <td>{{ r.match.customer_name }}</td>
+      <td class="num">{{ "{:,.0f}".format(r.amount).replace(",", " ") }} {{ r.currency }}</td>
+      <td>{{ r.date }}</td>
+      <td>{{ r.vs or "—" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if unmatched %}
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;color:var(--muted);">Nespárované platby ({{ unmatch_count }})</h2>
+  <p style="font-size:13px;color:var(--muted);margin-top:0;">
+    Platby bez odpovídající faktury (interní převody, faktury z jiného roku, neznámé VS).
+  </p>
+  <table>
+    <thead><tr>
+      <th>Protistrany</th><th class="num">Částka</th><th>Datum</th><th>VS</th><th>Poznámka</th>
+    </tr></thead>
+    <tbody>
+    {% for r in unmatched %}
+    <tr>
+      <td>{{ r.counterparty }}</td>
+      <td class="num">{{ "{:,.0f}".format(r.amount).replace(",", " ") }} {{ r.currency }}</td>
+      <td>{{ r.date }}</td>
+      <td>{{ r.vs or "—" }}</td>
+      <td style="font-size:12px;color:var(--muted);">{{ r.note }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if not to_confirm and not already_paid and not unmatched %}
+<div class="card"><div class="empty">Žádné příchozí platby nalezeny.</div></div>
+{% endif %}
+
+<script>
+function checkAll(checked) {
+  document.querySelectorAll('input[type="checkbox"][name^="confirm_"]').forEach(cb => cb.checked = checked);
+  const ca = document.getElementById('chk-all');
+  if (ca) ca.checked = checked;
+}
+</script>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

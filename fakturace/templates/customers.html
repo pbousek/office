@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fakturace — Zákazníci</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <div class="toolbar">
+    <h2>Zákazníci</h2>
+    <a class="btn" href="/customers/new">+ Nový zákazník</a>
+  </div>
+  {% if customers %}
+  <table>
+    <thead><tr><th>Název</th><th>IČO</th><th>DIČ</th><th>Město</th><th></th></tr></thead>
+    <tbody>
+    {% for c in customers %}
+    <tr>
+      <td><b>{{ c.name }}</b></td>
+      <td>{{ c.ico }}</td>
+      <td>{{ c.dic }}</td>
+      <td>{{ c.city }}</td>
+      <td class="actions">
+        <a class="link" href="/customers/{{ c.id }}/edit">upravit</a>
+        <a class="link" href="/customers/{{ c.id }}/tariff">tarif</a>
+        <a class="link" href="/billing?customer_id={{ c.id }}">fakturovat</a>
+        <form method="post" action="/customers/{{ c.id }}/delete" style="display:inline" onsubmit="return confirm('Smazat zákazníka?')">
+          <button type="submit" class="btn-danger">smazat</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Zatím žádní zákazníci.</div>
+  {% endif %}
+</div>
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

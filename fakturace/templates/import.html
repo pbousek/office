@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Import faktury z PDF</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+<h2>Import faktur z PDF</h2>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if folder_pdfs %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 style="font-size:16px;margin:0;">Soubory ve složce import/ ({{ folder_pdfs | length }})</h2>
+    <a class="btn" href="/import/folder">Analyzovat a importovat vše →</a>
+  </div>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+    Klikni na <b>Analyzovat a importovat vše</b> — appka přečte všechna PDF, zobrazí přehled a umožní hromadný nebo jednotlivý import.
+  </p>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;">
+    {% for f in folder_pdfs %}
+    <a class="btn btn-secondary btn-sm" href="/import/file/{{ f.filename }}">{{ f.filename }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="font-size:16px;margin-top:0;">Nahrát PDF soubor</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+    Nahraj jedno PDF — appka rozpozná číslo faktury, zákazníka, datum, splatnost a položky.
+    Data si budeš moct před uložením zkontrolovat a opravit.
+  </p>
+  <form method="post" action="/import/parse" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>PDF soubor</label>
+      <input type="file" name="pdf_file" accept=".pdf" required style="display:block;margin-top:4px;">
+    </div>
+    <button type="submit" class="btn" style="margin-top:8px;">Načíst PDF →</button>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

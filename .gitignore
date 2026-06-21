@@ -1,0 +1,14 @@
+data/
+__pycache__/
+*.pyc
+*.db
+.env
+*.service
+fakturace/data/
+fakturace/import/
+fakturace/banka/
+fakturace/__pycache__/
+fakturace/Screenshot_*
+timetrack/data/
+timetrack/__pycache__/
+timetrack/Screenshot_*

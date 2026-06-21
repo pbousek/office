@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Párování dokončeno</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card" style="text-align:center;padding:32px;">
+  <div style="font-size:48px;margin-bottom:12px;">✓</div>
+  <div style="font-size:20px;font-weight:700;color:var(--green);margin-bottom:8px;">{{ count }} faktur označeno jako Zaplaceno</div>
+  <div style="color:var(--muted);font-size:14px;margin-bottom:24px;">Datum platby bylo uloženo podle výpisu z banky.</div>
+  <div style="display:flex;gap:8px;justify-content:center;">
+    <a class="btn" href="/">Přejít na přehled</a>
+    <a class="btn btn-secondary" href="/bank">Zpracovat další výpis</a>
+  </div>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

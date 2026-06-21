@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+reportlab
+httpx
+qrcode[pil]
+pillow
+pdfplumber

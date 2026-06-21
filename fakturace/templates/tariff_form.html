@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarif — {{ customer.name }}</title><link rel="stylesheet" href="/static/style.css?v=4">
+<style>
+.tariff-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.tariff-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; padding: 4px 8px; text-align: left; }
+.tariff-table td { padding: 4px 6px; vertical-align: middle; }
+.tariff-table input[type=text], .tariff-table input[type=number] { padding: 6px 8px; font-size: 13px; }
+.tariff-table input.w-desc { width: 100%; min-width: 180px; }
+.tariff-table input.w-price { width: 90px; }
+.tariff-table input.w-unit { width: 60px; }
+.tariff-table input.w-vat { width: 60px; }
+.tariff-table input.w-upto { width: 80px; }
+.remove-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; line-height: 1; }
+.remove-btn:hover { color: var(--danger); }
+</style>
+</head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+<div class="card">
+  <h2>Tarif — {{ customer.name }}</h2>
+
+  <form method="post" action="/customers/{{ customer.id }}/tariff">
+
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="field" style="flex:0 1 260px;">
+        <label>Zákazník v TimeTracku</label>
+        <input type="text" name="timetrack_customer" id="tt-customer"
+               value="{{ tariff.get('timetrack_customer', '') }}"
+               list="tt-customers-list" placeholder="(stejný název jako zde)">
+        <datalist id="tt-customers-list">
+          {% for c in tt_customers %}<option value="{{ c }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="field" style="flex:0 1 160px;">
+        <label>Zahrnuté hodiny / měs.</label>
+        <input type="number" name="included_hours" value="{{ tariff.get('included_hours', 0) }}" min="0" step="0.5">
+      </div>
+    </div>
+
+    <h2>Fixní měsíční položky</h2>
+    <input type="hidden" name="fi_count" id="fi_count" value="{{ tariff.get('fixed_items', [])|length }}">
+    <table class="tariff-table">
+      <thead><tr>
+        <th style="width:40%">Popis</th>
+        <th>Cena (Kč)</th>
+        <th>Jednotka</th>
+        <th>DPH %</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="fixed-items-body">
+        {% for fi in tariff.get('fixed_items', []) %}
+        {% set i = loop.index0 %}
+        <tr>
+          <td><input type="text" class="w-desc" name="fi_desc_{{ i }}" value="{{ fi.description }}" placeholder="Popis" required></td>
+          <td><input type="number" class="w-price" name="fi_price_{{ i }}" value="{{ fi.price }}" step="0.01" min="0" required></td>
+          <td><input type="text" class="w-unit" name="fi_unit_{{ i }}" value="{{ fi.get('unit', 'měs') }}"></td>
+          <td><input type="number" class="w-vat" name="fi_vat_{{ i }}" value="{{ fi.get('vat_rate', 21) }}" min="0" max="100"></td>
+          <td><button type="button" class="remove-btn" onclick="this.closest('tr').remove()">×</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="addFixedRow()">+ Přidat položku</button>
+
+    <h2 style="margin-top:20px;">Sazby (tiery)</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 10px 0;">
+      „Do hodin" prázdné = neomezeno. Zahrnuté hodiny se odečtou od prvního tieru.
+    </p>
+    <input type="hidden" name="tier_count" id="tier_count" value="{{ tariff.get('tiers', [])|length }}">
+    <table class="tariff-table">
+      <thead><tr>
+        <th style="width:40%">Popis</th>
+        <th>Sazba (Kč/h)</th>
+        <th>Do hodin</th>
+        <th>DPH %</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="tiers-body">
+        {% for tier in tariff.get('tiers', []) %}
+        {% set i = loop.index0 %}
+        <tr>
+          <td><input type="text" class="w-desc" name="tier_desc_{{ i }}" value="{{ tier.description }}" placeholder="Popis" required></td>
+          <td><input type="number" class="w-price" name="tier_rate_{{ i }}" value="{{ tier.rate }}" step="0.01" min="0" required></td>
+          <td><input type="number" class="w-upto" name="tier_up_to_{{ i }}" value="{{ tier.up_to if tier.up_to is not none else '' }}" min="0" step="0.5" placeholder="∞"></td>
+          <td><input type="number" class="w-vat" name="tier_vat_{{ i }}" value="{{ tier.get('vat_rate', 21) }}" min="0" max="100"></td>
+          <td><button type="button" class="remove-btn" onclick="this.closest('tr').remove()">×</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="addTierRow()">+ Přidat tier</button>
+
+    <div style="margin-top:20px;display:flex;gap:8px;">
+      <button type="submit">Uložit tarif</button>
+      <a class="btn btn-secondary" href="/customers">Zrušit</a>
+    </div>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div>
+
+<script>
+let fiCount = parseInt(document.getElementById('fi_count').value);
+let tierCount = parseInt(document.getElementById('tier_count').value);
+
+function addFixedRow() {
+  const tbody = document.getElementById('fixed-items-body');
+  const i = fiCount++;
+  document.getElementById('fi_count').value = fiCount;
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><input type="text" class="w-desc" name="fi_desc_${i}" placeholder="Popis" required></td>` +
+    `<td><input type="number" class="w-price" name="fi_price_${i}" value="0" step="0.01" min="0" required></td>` +
+    `<td><input type="text" class="w-unit" name="fi_unit_${i}" value="měs"></td>` +
+    `<td><input type="number" class="w-vat" name="fi_vat_${i}" value="21" min="0" max="100"></td>` +
+    `<td><button type="button" class="remove-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('input[type=text]').focus();
+}
+
+function addTierRow() {
+  const tbody = document.getElementById('tiers-body');
+  const i = tierCount++;
+  document.getElementById('tier_count').value = tierCount;
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><input type="text" class="w-desc" name="tier_desc_${i}" placeholder="Popis" required></td>` +
+    `<td><input type="number" class="w-price" name="tier_rate_${i}" value="0" step="0.01" min="0" required></td>` +
+    `<td><input type="number" class="w-upto" name="tier_up_to_${i}" min="0" step="0.5" placeholder="∞"></td>` +
+    `<td><input type="number" class="w-vat" name="tier_vat_${i}" value="21" min="0" max="100"></td>` +
+    `<td><button type="button" class="remove-btn" onclick="this.closest('tr').remove()">×</button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('input[type=text]').focus();
+}
+</script>
+</body></html>

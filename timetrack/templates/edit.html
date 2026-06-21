@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeTrack — Upravit záznam</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>⏱ TimeTrack</h1>
+  <div class="sub"><a class="link" href="/?year={{ year }}&month={{ month }}">&larr; zpět na přehled</a></div>
+
+  <div class="card">
+    <h2>Upravit záznam</h2>
+    <form method="post" action="/entries/{{ entry.id }}/edit">
+      <div class="form-row" style="margin-bottom: 10px;">
+        <div class="field wide">
+          <label>Zákazník</label>
+          <select name="customer" required>
+            {% for c in customers %}
+            <option value="{{ c.name }}" {% if c.name == entry.customer %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+            {% if entry.customer not in customers|map(attribute='name')|list %}
+            <option value="{{ entry.customer }}" selected>{{ entry.customer }}</option>
+            {% endif %}
+          </select>
+        </div>
+        <div class="field wide">
+          <label>Činnost</label>
+          <select name="activity" required>
+            {% for a in activities %}
+            <option value="{{ a.name }}" {% if a.name == entry.activity %}selected{% endif %}>{{ a.name }}</option>
+            {% endfor %}
+            {% if entry.activity not in activities|map(attribute='name')|list %}
+            <option value="{{ entry.activity }}" selected>{{ entry.activity }}</option>
+            {% endif %}
+          </select>
+        </div>
+        <div class="field" style="flex: 0 0 130px;">
+          <label>Datum</label>
+          <input type="date" name="date" value="{{ date_val }}" required>
+        </div>
+        <div class="field time-field">
+          <label>Od</label>
+          <div class="time-selects">
+            <select name="start_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if '%02d'|format(h) == start_h %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
+            <span class="time-colon">:</span>
+            <select name="start_m">{% for m in range(60) %}<option value="{{ '%02d'|format(m) }}" {% if '%02d'|format(m) == start_m %}selected{% endif %}>{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div class="field time-field">
+          <label>Do</label>
+          <div class="time-selects">
+            <select name="end_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if '%02d'|format(h) == end_h %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
+            <span class="time-colon">:</span>
+            <select name="end_m">{% for m in range(60) %}<option value="{{ '%02d'|format(m) }}" {% if '%02d'|format(m) == end_m %}selected{% endif %}>{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field wide">
+          <label>Poznámka</label>
+          <input type="text" name="note" value="{{ entry.note or '' }}">
+        </div>
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button type="submit">Uložit</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

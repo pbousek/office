@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Faktura {{ invoice.number }}</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<body><div class="wrap">
+{% include "_nav.html" %}
+
+{% if sent %}
+<div class="alert alert-ok">Faktura byla odeslána.</div>
+{% endif %}
+
+<div class="card">
+  <div class="invoice-header">
+    <div>
+      <h2 style="font-size:20px;margin-bottom:4px;">Faktura {{ invoice.number }}</h2>
+      <span class="badge badge-{{ invoice.status }}">{{ {'draft':'Návrh','sent':'Odesláno','paid':'Zaplaceno','cancelled':'Storno'}[invoice.status] }}</span>
+    </div>
+    <div class="invoice-header-right">
+      <div class="invoice-doc-links">
+        <a class="link" href="/invoices/{{ invoice.id }}/edit">Upravit</a>
+        <a class="link" href="/invoices/{{ invoice.id }}/pdf">⬇ PDF</a>
+        <a class="link" href="/invoices/{{ invoice.id }}/isdocx">⬇ ISDOCX</a>
+        <a class="link" href="/invoices/{{ invoice.id }}/send">✉ Odeslat</a>
+        <form method="post" action="/invoices/{{ invoice.id }}/clone" style="display:inline">
+          <button type="submit" class="btn-link">⧉ Klonovat</button>
+        </form>
+      </div>
+      <div class="invoice-status-btns">
+        {% if invoice.status == 'draft' %}
+          <form method="post" action="/invoices/{{ invoice.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="sent">
+            <button type="submit">Označit odesláno</button>
+          </form>
+        {% endif %}
+        {% if invoice.status in ('draft', 'sent') %}
+          <form method="post" action="/invoices/{{ invoice.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="paid">
+            <button type="submit" class="is-green">✓ Zaplaceno</button>
+          </form>
+        {% endif %}
+        {% if invoice.status == 'paid' %}
+          <form method="post" action="/invoices/{{ invoice.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="sent">
+            <button type="submit">↩ Zrušit platbu</button>
+          </form>
+        {% endif %}
+        {% if invoice.status != 'cancelled' %}
+          <form method="post" action="/invoices/{{ invoice.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="cancelled">
+            <button type="submit" class="is-red" onclick="return confirm('Stornovat fakturu?')">Storno</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:16px 0;">
+
+  <!-- Parties -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">DODAVATEL</div>
+      <div style="font-weight:600;">{{ settings.company_name }}</div>
+      <div>{{ settings.company_street }}</div>
+      <div>{{ settings.company_zip }} {{ settings.company_city }}</div>
+      {% if settings.company_ico %}<div>IČO: {{ settings.company_ico }}</div>{% endif %}
+      {% if settings.company_dic %}<div>DIČ: {{ settings.company_dic }}</div>{% endif %}
+      {% if settings.company_iban %}<div>IBAN: {{ settings.company_iban }}</div>{% endif %}
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">ODBĚRATEL</div>
+      <div style="font-weight:600;">{{ invoice.customer_name }}</div>
+      <div>{{ invoice.customer_street }}</div>
+      <div>{{ invoice.customer_zip }} {{ invoice.customer_city }}</div>
+      {% if invoice.customer_ico %}<div>IČO: {{ invoice.customer_ico }}</div>{% endif %}
+      {% if invoice.customer_dic %}<div>DIČ: {{ invoice.customer_dic }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Dates -->
+  <div style="display:flex;gap:24px;font-size:13px;margin-bottom:16px;flex-wrap:wrap;">
+    <div><span style="color:var(--muted);">Datum vystavení:</span> <b>{{ invoice.issue_date }}</b></div>
+    <div><span style="color:var(--muted);">DUZP:</span> <b>{{ invoice.duzp or invoice.issue_date }}</b></div>
+    <div><span style="color:var(--muted);">Datum splatnosti:</span> <b>{{ invoice.due_date }}</b></div>
+    <div><span style="color:var(--muted);">Forma úhrady:</span> převodem</div>
+    {% if invoice.paid_date %}<div><span style="color:var(--muted);">Datum platby:</span> <b style="color:var(--green);">{{ invoice.paid_date }}</b></div>{% endif %}
+  </div>
+
+  <!-- Items -->
+  <table>
+    <thead><tr>
+      <th>Popis</th><th class="num">Množství</th><th>Jedn.</th><th class="num">Cena/j.</th>
+      {% if invoice.vat_payer %}<th class="num">Sazba DPH</th><th class="num">DPH</th>{% endif %}
+      <th class="num">Celkem</th>
+    </tr></thead>
+    <tbody>
+    {% for it in items %}
+    {% set base = it.quantity * it.unit_price %}
+    {% set vat = (base * it.vat_rate / 100) if invoice.vat_payer else 0 %}
+    <tr>
+      <td>{{ it.description }}</td>
+      <td class="num">{{ it.quantity|int if it.quantity == it.quantity|int else it.quantity }}</td>
+      <td>{{ it.unit }}</td>
+      <td class="num">{{ it.unit_price | money }} {{ invoice.currency }}</td>
+      {% if invoice.vat_payer %}
+      <td class="num">{{ it.vat_rate }} %</td>
+      <td class="num">{{ vat | money }}</td>
+      {% endif %}
+      <td class="num"><b>{{ (base + vat) | money }} {{ invoice.currency }}</b></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals-block">
+    {% if invoice.vat_payer %}
+      {% for vl in totals.vat_lines %}
+      <div class="total-line">Základ {{ vl.rate }} %: {{ vl.base | money }} — DPH: {{ vl.vat | money }} {{ invoice.currency }}</div>
+      {% endfor %}
+      <div class="total-line">DPH celkem: {{ totals.vat | money }} {{ invoice.currency }}</div>
+    {% endif %}
+    <div class="grand-total">Celkem k úhradě: {{ totals.total | money }} {{ invoice.currency }}</div>
+  </div>
+
+  {% if invoice.note %}
+  <div style="margin-top:12px;font-size:13px;color:var(--muted);">Poznámka: {{ invoice.note }}</div>
+  {% endif %}
+  {% if not invoice.vat_payer %}
+  <div style="margin-top:8px;font-size:12px;color:var(--muted);">Nejsem plátce DPH.</div>
+  {% endif %}
+</div>
+
+<div style="display:flex;gap:8px;">
+  <form method="post" action="/invoices/{{ invoice.id }}/delete" onsubmit="return confirm('Smazat fakturu?')">
+    <button type="submit" class="btn-danger">Smazat fakturu</button>
+  </form>
+</div>
+
+<footer>Fakturace · běží lokálně</footer>
+</div></body></html>

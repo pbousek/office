@@ -1,0 +1,25 @@
+services:
+  timetrack:
+    build: ./timetrack
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8731:8731"
+    volumes:
+      - timetrack_data:/app/data
+
+  fakturace:
+    build: ./fakturace
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8732:8732"
+    environment:
+      - TIMETRACK_DB_PATH=/timetrack_data/timetrack.db
+    volumes:
+      - fakturace_data:/app/data
+      - timetrack_data:/timetrack_data:ro
+    depends_on:
+      - timetrack
+
+volumes:
+  timetrack_data:
+  fakturace_data:

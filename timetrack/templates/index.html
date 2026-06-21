@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeTrack</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-header">
+    <div>
+      <h1>⏱ TimeTrack</h1>
+      <div class="sub">Lokální evidence odpracovaného času — žádný cloud, žádné předplatné.</div>
+    </div>
+    <a class="btn btn-secondary" href="/settings">⚙ Nastavení</a>
+  </div>
+
+  <div class="card">
+    <h2>Nový záznam</h2>
+    <form method="post" action="/entries/add">
+      <div class="form-row" style="margin-bottom: 10px;">
+        <div class="field wide">
+          <label>Zákazník</label>
+          {% if customers %}
+          <select name="customer" required>
+            <option value="" disabled selected>— vyberte —</option>
+            {% for c in customers %}<option value="{{ c.name }}">{{ c.name }}</option>{% endfor %}
+          </select>
+          {% else %}
+          <select name="customer" required disabled>
+            <option value="">— přidejte zákazníky v Nastavení —</option>
+          </select>
+          {% endif %}
+        </div>
+        <div class="field wide">
+          <label>Činnost</label>
+          {% if activities %}
+          <select name="activity" required>
+            <option value="" disabled selected>— vyberte —</option>
+            {% for a in activities %}<option value="{{ a.name }}">{{ a.name }}</option>{% endfor %}
+          </select>
+          {% else %}
+          <select name="activity" required disabled>
+            <option value="">— přidejte činnosti v Nastavení —</option>
+          </select>
+          {% endif %}
+        </div>
+        <div class="field" style="flex: 0 0 130px;">
+          <label>Datum</label>
+          <input type="date" name="date" value="{{ today_str }}" required>
+        </div>
+        <div class="field time-field">
+          <label>Od</label>
+          <div class="time-selects">
+            <select name="start_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if '%02d'|format(h) == now_h %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
+            <span class="time-colon">:</span>
+            <select name="start_m">{% for m in range(60) %}<option value="{{ '%02d'|format(m) }}" {% if '%02d'|format(m) == now_m %}selected{% endif %}>{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div class="field time-field">
+          <label>Do</label>
+          <div class="time-selects">
+            <select name="end_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if '%02d'|format(h) == now_h %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
+            <span class="time-colon">:</span>
+            <select name="end_m">{% for m in range(60) %}<option value="{{ '%02d'|format(m) }}" {% if '%02d'|format(m) == now_m %}selected{% endif %}>{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field wide">
+          <label>Poznámka (nepovinné)</label>
+          <input type="text" name="note" placeholder="">
+        </div>
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button type="submit" {% if not customers or not activities %}disabled title="Nejdříve přidejte zákazníky a činnosti v Nastavení"{% endif %}>Přidat</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <form method="get" action="/" class="form-row" style="gap: 8px;">
+        <div class="field narrow">
+          <label>Měsíc</label>
+          <select name="month" onchange="this.form.submit()">
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field narrow">
+          <label>Rok</label>
+          <select name="year" onchange="this.form.submit()">
+            {% for y in range(year - 3, year + 2) %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field wide">
+          <label>Zákazník (filtr)</label>
+          <select name="customer" onchange="this.form.submit()">
+            <option value="">Všichni</option>
+            {% for c in customers %}
+            <option value="{{ c.name }}" {% if c.name == selected_customer %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+      <a class="btn" href="/export/pdf?year={{ year }}&month={{ month }}{% if selected_customer %}&customer={{ selected_customer }}{% endif %}">⬇ Export PDF — {{ month_name }} {{ year }}</a>
+    </div>
+
+    {% if entries %}
+    <table>
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Od</th>
+          <th>Do</th>
+          <th class="num">Trvání</th>
+          <th>Zákazník</th>
+          <th>Činnost</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.start_time[8:10] }}.{{ e.start_time[5:7] }}.</td>
+          <td>{{ e.start_time[11:16] }}</td>
+          <td>{{ e.end_time[11:16] }}</td>
+          <td class="num">{{ e.duration }}</td>
+          <td>{{ e.customer }}</td>
+          <td>{{ e.activity }}{% if e.note %} <span style="color: var(--muted);">— {{ e.note }}</span>{% endif %}</td>
+          <td class="actions">
+            <a class="link" href="/entries/{{ e.id }}/edit">upravit</a>
+            <form method="post" action="/entries/{{ e.id }}/duplicate" style="display:inline">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="month" value="{{ month }}">
+              <button type="submit" class="btn-secondary btn-sm">kopírovat</button>
+            </form>
+            <form method="post" action="/entries/{{ e.id }}/delete" style="display:inline" onsubmit="return confirm('Smazat záznam?');">
+              <input type="hidden" name="year" value="{{ year }}">
+              <input type="hidden" name="month" value="{{ month }}">
+              <button type="submit" class="btn-danger">smazat</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="total-bar">Celkem za {{ month_name }} {{ year }}{% if selected_customer %} ({{ selected_customer }}){% endif %}: <b>{{ total_hours }}</b>&nbsp;h</div>
+    {% else %}
+    <div class="empty">Žádné záznamy za {{ month_name }} {{ year }}{% if selected_customer %} pro {{ selected_customer }}{% endif %}.</div>
+    {% endif %}
+  </div>
+
+  <footer>TimeTrack · běží lokálně na tvém stroji · data v {{ "data/timetrack.db" }}</footer>
+</div>
+</body>
+</html>

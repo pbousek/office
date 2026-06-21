@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeTrack — Nastavení</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>⏱ TimeTrack</h1>
+  <div class="sub"><a class="link" href="/">&larr; zpět na přehled</a></div>
+
+  <div class="settings-grid">
+
+    <div class="card">
+      <h2>Zákazníci</h2>
+      <form method="post" action="/customers/add" class="form-row" style="margin-bottom: 14px;">
+        <div class="field wide">
+          <label>Nový zákazník</label>
+          <input type="text" name="name" required placeholder="název zákazníka">
+        </div>
+        <div class="field" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button type="submit">Přidat</button>
+        </div>
+      </form>
+
+      {% if customers %}
+      <ul class="item-list">
+        {% for c in customers %}
+        <li>
+          <span>{{ c.name }}</span>
+          <form method="post" action="/customers/{{ c.id }}/delete" style="display:inline" onsubmit="return confirm('Odebrat zákazníka {{ c.name }}?');">
+            <button type="submit" class="btn-danger">odebrat</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty" style="padding: 16px 0;">Zatím žádní zákazníci.</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Činnosti</h2>
+      <form method="post" action="/activities/add" class="form-row" style="margin-bottom: 14px;">
+        <div class="field wide">
+          <label>Nová činnost</label>
+          <input type="text" name="name" required placeholder="název činnosti">
+        </div>
+        <div class="field" style="flex: 0 0 auto;">
+          <label>&nbsp;</label>
+          <button type="submit">Přidat</button>
+        </div>
+      </form>
+
+      {% if activities %}
+      <ul class="item-list">
+        {% for a in activities %}
+        <li>
+          <span>{{ a.name }}</span>
+          <form method="post" action="/activities/{{ a.id }}/delete" style="display:inline" onsubmit="return confirm('Odebrat činnost {{ a.name }}?');">
+            <button type="submit" class="btn-danger">odebrat</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty" style="padding: 16px 0;">Zatím žádné činnosti.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <footer>TimeTrack · běží lokálně na tvém stroji · data v {{ "data/timetrack.db" }}</footer>
+</div>
+</body>
+</html>
