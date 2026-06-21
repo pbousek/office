@@ -263,8 +263,10 @@ async def send_invoice_submit(inv_id: int, request: Request):
         duzp = invoice.get("duzp") or invoice.get("issue_date", "")
         if duzp and len(duzp) >= 7:
             r_year, r_month = int(duzp[:4]), int(duzp[5:7])
-            cust_name = invoice.get("snap_name") or ""
-            entries = tt.get_entries_for_customer_month(cust_name, r_year, r_month) if cust_name else []
+            customer = db.get_customer(invoice["customer_id"])
+            tariff = bil.get_tariff(customer) if customer else {}
+            tt_cust_name = tariff.get("timetrack_customer", "").strip()
+            entries = tt.get_entries_for_customer_month(tt_cust_name, r_year, r_month) if tt_cust_name else []
             if entries:
                 report_bytes = bil.generate_billing_report(entries, r_year, r_month)
     try:
