@@ -59,6 +59,10 @@ def generate_monthly_pdf(entries: list[dict], year: int, month: int) -> bytes:
         leftMargin=15 * mm, rightMargin=15 * mm,
     )
     styles = getSampleStyleSheet()
+    cell_style = ParagraphStyle(
+        "CellCustom", parent=styles["Normal"], fontName="DejaVuSans",
+        fontSize=9, leading=12,
+    )
     title_style = ParagraphStyle(
         "TitleCustom", parent=styles["Title"], fontName="DejaVuSans-Bold",
         fontSize=16, spaceAfter=2,
@@ -100,12 +104,13 @@ def generate_monthly_pdf(entries: list[dict], year: int, month: int) -> bytes:
             end_dt = _parse_dt(r["end_time"])
             hours = _duration_hours(r["start_time"], r["end_time"])
             customer_total += hours
+            activity = r["activity"] + (f" — {r['note']}" if r.get("note") else "")
             table_data.append([
                 start_dt.strftime("%d.%m.%Y"),
                 start_dt.strftime("%H:%M"),
                 end_dt.strftime("%H:%M"),
                 _fmt_hours(hours),
-                r["activity"] + (f" — {r['note']}" if r.get("note") else ""),
+                Paragraph(activity, cell_style),
             ])
 
         grand_total += customer_total
