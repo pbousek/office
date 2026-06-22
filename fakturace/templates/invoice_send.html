@@ -40,10 +40,17 @@
       <label style="font-weight:normal;"><input type="checkbox" name="attach_report"> výkaz hodin (PDF)</label>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button type="submit" {% if not settings.smtp_host %}disabled{% endif %}>Odeslat</button>
+      <button type="submit" id="send-btn" {% if not settings.smtp_host %}disabled{% endif %}>Odeslat</button>
       <a class="btn btn-secondary" href="/invoices/{{ invoice.id }}">Zrušit</a>
     </div>
   </form>
+  <script>
+    document.querySelector('form').addEventListener('submit', function() {
+      var btn = document.getElementById('send-btn');
+      btn.disabled = true;
+      btn.textContent = 'Odesílám…';
+    });
+  </script>
 </div>
 
 <footer>Fakturace · běží lokálně</footer>
