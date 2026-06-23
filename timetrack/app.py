@@ -3,7 +3,7 @@
 Spuštění:  python app.py
 Otevři:    http://localhost:8731
 """
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from pathlib import Path
@@ -93,7 +93,8 @@ def add_entry(
     month: int = Form(...),
 ):
     start_iso = f"{date_}T{start_h}:{start_m}:00"
-    end_iso = f"{date_}T{end_h}:{end_m}:00"
+    end_date = date_ if f"{end_h}:{end_m}" > f"{start_h}:{start_m}" else (date.fromisoformat(date_) + timedelta(days=1)).isoformat()
+    end_iso = f"{end_date}T{end_h}:{end_m}:00"
     db.add_entry(customer, activity, start_iso, end_iso, note)
     return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
 
@@ -148,7 +149,8 @@ def edit_entry_submit(
     month: int = Form(...),
 ):
     start_iso = f"{date_}T{start_h}:{start_m}:00"
-    end_iso = f"{date_}T{end_h}:{end_m}:00"
+    end_date = date_ if f"{end_h}:{end_m}" > f"{start_h}:{start_m}" else (date.fromisoformat(date_) + timedelta(days=1)).isoformat()
+    end_iso = f"{end_date}T{end_h}:{end_m}:00"
     db.update_entry(entry_id, customer, activity, start_iso, end_iso, note)
     return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
 
