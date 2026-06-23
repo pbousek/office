@@ -56,6 +56,17 @@ Fakturace čte TimeTrack databázi read-only z `../timetrack/data/timetrack.db`.
 Při tvorbě faktury se zobrazí sekce **Import ze záznamu z TimeTracku** — vyber zákazníka
 a období, záznamy se načtou a přidají jako položky faktury (hodiny × sazba).
 
+## Import faktur a bankovních výpisů
+
+Appka umí hromadně importovat přijaté faktury z PDF a párovat platby z bankovního výpisu:
+
+- `import/` — sem dej PDF soubory přijatých faktur; appka je naskenuje a nabídne k importu přes `/import`
+- `banka/` — sem dej CSV výpisy z Air Bank; appka z nich spáruje příchozí platby s fakturami přes `/bank`
+
+Složky vytvoř ručně — nejsou v gitu (`.gitignore`), obsahují reálné dokumenty.
+
+**V Dockeru** jsou tyto složky uvnitř kontejneru (`/app/import`, `/app/banka`). Pokud je chceš používat, přidej do `docker-compose.yml` bind mount nebo nahrávej soubory přes UI (přes formulář na `/import` a `/bank`).
+
 ## Struktura
 
 - `app.py` — FastAPI routy (port 8732)
