@@ -76,37 +76,17 @@ def parse_airbank_csv(path: str) -> list[dict]:
 
 
 def match_transactions(transactions: list[dict], invoices: list[dict]) -> list[dict]:
-    """Páruje transakce s fakturami. Vrátí seznam s přiřazenými fakturami."""
+    """Páruje transakce s fakturami podle VS. Vrátí seznam s přiřazenými fakturami."""
     inv_by_vs = {}
-    inv_by_amount = {}
     for inv in invoices:
         if inv["status"] in ("paid", "cancelled"):
             continue
         num = str(inv["number"]).strip()
         inv_by_vs[num] = inv
-        # Sekundární index: zaokrouhlená částka pro faktury bez VS platby
-        key = f"{inv['total']:.0f}_{inv['currency']}"
-        inv_by_amount.setdefault(key, []).append(inv)
 
     results = []
     for tx in transactions:
-        match = None
-        match_type = None
-
-        # 1. Přesná shoda VS
-        if tx["vs"]:
-            match = inv_by_vs.get(tx["vs"])
-            if match:
-                match_type = "vs"
-
-        # 2. Shoda částky (jen pokud je jediná faktura s danou částkou)
-        if not match:
-            key = f"{tx['amount']:.0f}_{tx['currency']}"
-            candidates = inv_by_amount.get(key, [])
-            if len(candidates) == 1:
-                match = candidates[0]
-                match_type = "amount"
-
-        results.append({**tx, "match": match, "match_type": match_type})
+        match = inv_by_vs.get(tx["vs"]) if tx["vs"] else None
+        results.append({**tx, "match": match, "match_type": "vs" if match else None})
 
     return results

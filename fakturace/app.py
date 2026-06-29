@@ -842,16 +842,15 @@ async def bank_parse(request: Request):
             Path("/tmp" + "/" + upload.filename).unlink(missing_ok=True)
 
     invoices = db.list_invoices()
+    paid_vs = {str(inv["number"]).strip() for inv in invoices if inv["status"] in ("paid", "cancelled")}
     results = bank_match(txs, invoices)
 
-    matched = [r for r in results if r["match"]]
-    unmatched = [r for r in results if not r["match"]]
-    already_paid = [r for r in matched if r["match"]["status"] == "paid"]
-    to_confirm = [r for r in matched if r["match"]["status"] != "paid"]
+    to_confirm = [r for r in results if r["match"]]
+    unmatched = [r for r in results if not r["match"] and r["vs"] not in paid_vs]
 
     return render("bank_review.html",
         to_confirm=to_confirm,
-        already_paid=already_paid,
+        already_paid=[],
         unmatched=unmatched,
         source=folder_file or upload.filename,
     )
