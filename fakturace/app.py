@@ -261,14 +261,21 @@ async def send_invoice_submit(inv_id: int, request: Request):
     report_bytes = None
     if form.get("attach_report"):
         duzp = invoice.get("duzp") or invoice.get("issue_date", "")
-        if duzp and len(duzp) >= 7:
-            r_year, r_month = int(duzp[:4]), int(duzp[5:7])
-            customer = db.get_customer(invoice["customer_id"])
-            tariff = bil.get_tariff(customer) if customer else {}
-            tt_cust_name = tariff.get("timetrack_customer", "").strip()
-            entries = tt.get_entries_for_customer_month(tt_cust_name, r_year, r_month) if tt_cust_name else []
-            if entries:
-                report_bytes = bil.generate_billing_report(entries, r_year, r_month)
+        r_year, r_month = (int(duzp[:4]), int(duzp[5:7])) if duzp and len(duzp) >= 7 else (None, None)
+        customer = db.get_customer(invoice["customer_id"]) if r_year else None
+        tariff = bil.get_tariff(customer) if customer else {}
+        tt_cust_name = tariff.get("timetrack_customer", "").strip() if r_year else ""
+        entries = tt.get_entries_for_customer_month(tt_cust_name, r_year, r_month) if tt_cust_name else []
+        if entries:
+            report_bytes = bil.generate_billing_report(entries, r_year, r_month)
+        else:
+            return render("invoice_send.html", invoice=invoice, settings=settings,
+                          to=form.get("to", ""), subject=form.get("subject", ""),
+                          body=form.get("body", ""),
+                          error=(f"Výkaz hodin se nepodařilo přiložit — pro DUZP {duzp or '(prázdné)'} "
+                                 f"({r_month}/{r_year}) nejsou v TimeTracku pro zákazníka "
+                                 f"'{tt_cust_name or '(nenastaveno)'}' žádné záznamy. "
+                                 "Zkontrolujte DUZP faktury a pole 'Zákazník v TimeTracku' v tarifu."))
     try:
         send_invoice_email(
             to=form["to"],

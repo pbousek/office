@@ -25,7 +25,7 @@
       </div>
       <div class="field narrow">
         <label>DUZP</label>
-        <input type="date" name="duzp" value="{{ invoice.duzp if invoice and invoice.duzp else issue_date }}">
+        <input type="date" name="duzp" id="duzp-input" value="{{ invoice.duzp if invoice and invoice.duzp else issue_date }}">
       </div>
       <div class="field narrow">
         <label>Měna</label>
@@ -219,6 +219,13 @@ function importTT(entries, dateFrom) {
   const custId = parseInt(document.querySelector('[name=customer_id]').value);
   const tariff = customerTariffs[custId];
   const hasTariff = tariff && ((tariff.fixed_items && tariff.fixed_items.length) || (tariff.tiers && tariff.tiers.length));
+
+  if (dateFrom) {
+    const [year, month] = dateFrom.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    document.getElementById('duzp-input').value =
+      `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }
 
   if (hasTariff && dateFrom) {
     const [year, month] = dateFrom.split('-').map(Number);
