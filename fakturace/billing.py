@@ -1,5 +1,6 @@
 """Tariff calculation and billing report generation."""
 import json
+import math
 import sys
 from pathlib import Path
 from datetime import date
@@ -37,10 +38,12 @@ def apply_tariff(total_hours: float, tariff: dict, year: int, month: int, vat_pa
         tier_hours = min(remaining, float(up_to) - consumed) if up_to is not None else remaining
         # Hours covered by included_hours are not billed
         billable = max(0.0, tier_hours - max(0.0, included - consumed))
+        # Any part of a started hour above the included package is billed as a full hour
+        billable = math.ceil(billable - 1e-9) if billable > 1e-9 else 0.0
         if billable > 0.001:
             items.append({
                 "description": f"{tier['description']} {month_label}",
-                "quantity": round(billable, 2),
+                "quantity": billable,
                 "unit": "hod",
                 "unit_price": float(tier.get("rate", 0)),
                 "vat_rate": int(tier.get("vat_rate", 21)) if vat_payer else 0,
