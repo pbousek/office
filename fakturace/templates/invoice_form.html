@@ -204,9 +204,10 @@ function applyTariff(totalHours, tariff, year, month) {
     if (remaining <= 0.001) break;
     const upTo = tier.up_to;
     const tierH = upTo !== null ? Math.min(remaining, upTo - consumed) : remaining;
-    const billable = Math.max(0, tierH - Math.max(0, included - consumed));
+    let billable = Math.max(0, tierH - Math.max(0, included - consumed));
+    billable = billable > 1e-9 ? Math.ceil(billable - 1e-9) : 0;
     if (billable > 0.001)
-      items.push({ desc: tier.description + ' ' + label, qty: Math.round(billable * 100) / 100, unit: 'hod', price: tier.rate });
+      items.push({ desc: tier.description + ' ' + label, qty: billable, unit: 'hod', price: tier.rate });
     consumed += tierH;
     remaining -= tierH;
   }
