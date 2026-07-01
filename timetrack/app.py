@@ -3,10 +3,13 @@
 Spuštění:  python app.py
 Otevři:    http://localhost:8731
 """
+import re
+import unicodedata
 from datetime import datetime, date, timedelta
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from pathlib import Path
+from urllib.parse import quote
 from jinja2 import Environment, FileSystemLoader
 
 import db
@@ -193,12 +196,19 @@ def delete_activity(activity_id: int):
 def export_pdf(year: int, month: int, customer: str = None):
     entries = db.list_entries(year=year, month=month, customer=customer or None)
     pdf_bytes = generate_monthly_pdf(entries, year, month)
-    filename = f"vykaz_{year:04d}-{month:02d}.pdf"
+    suffix = f"_{_slugify(customer)}" if customer else ""
+    filename = f"vykaz_{year:04d}-{month:02d}{suffix}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition":
+                 f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"},
     )
+
+
+def _slugify(name: str) -> str:
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^A-Za-z0-9]+", "_", ascii_name).strip("_")
 
 
 if __name__ == "__main__":
