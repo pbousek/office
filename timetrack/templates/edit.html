@@ -9,7 +9,7 @@
 <body>
 <div class="wrap">
   <h1>⏱ TimeTrack</h1>
-  <div class="sub"><a class="link" href="/?year={{ year }}&month={{ month }}">&larr; zpět na přehled</a></div>
+  <div class="sub"><a class="link" href="/?year={{ year }}&month={{ month }}{% if filter_customer %}&customer={{ filter_customer|urlencode }}{% endif %}">&larr; zpět na přehled</a></div>
 
   <div class="card">
     <h2>Upravit záznam</h2>
@@ -65,6 +65,7 @@
         </div>
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="filter_customer" value="{{ filter_customer }}">
         <div class="field" style="flex: 0 0 auto;">
           <label>&nbsp;</label>
           <button type="submit">Uložit</button>

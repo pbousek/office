@@ -75,6 +75,7 @@
         </div>
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="filter_customer" value="{{ selected_customer }}">
         <div class="field" style="flex: 0 0 auto;">
           <label>&nbsp;</label>
           <button type="submit" {% if not customers or not activities %}disabled title="Nejdříve přidejte zákazníky a činnosti v Nastavení"{% endif %}>Přidat</button>
@@ -138,15 +139,17 @@
           <td>{{ e.customer }}</td>
           <td>{{ e.activity }}{% if e.note %} <span style="color: var(--muted);">— {{ e.note }}</span>{% endif %}</td>
           <td class="actions">
-            <a class="link" href="/entries/{{ e.id }}/edit">upravit</a>
+            <a class="link" href="/entries/{{ e.id }}/edit{% if selected_customer %}?customer={{ selected_customer|urlencode }}{% endif %}">upravit</a>
             <form method="post" action="/entries/{{ e.id }}/duplicate" style="display:inline">
               <input type="hidden" name="year" value="{{ year }}">
               <input type="hidden" name="month" value="{{ month }}">
+              <input type="hidden" name="filter_customer" value="{{ selected_customer }}">
               <button type="submit" class="btn-secondary btn-sm">kopírovat</button>
             </form>
             <form method="post" action="/entries/{{ e.id }}/delete" style="display:inline" onsubmit="return confirm('Smazat záznam?');">
               <input type="hidden" name="year" value="{{ year }}">
               <input type="hidden" name="month" value="{{ month }}">
+              <input type="hidden" name="filter_customer" value="{{ selected_customer }}">
               <button type="submit" class="btn-danger">smazat</button>
             </form>
           </td>

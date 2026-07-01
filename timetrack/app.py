@@ -82,6 +82,11 @@ def index(request: Request, year: int = None, month: int = None, customer: str =
     )
 
 
+def _list_redirect(year: int, month: int, filter_customer: str = "") -> RedirectResponse:
+    suffix = f"&customer={quote(filter_customer)}" if filter_customer else ""
+    return RedirectResponse(url=f"/?year={year}&month={month}{suffix}", status_code=303)
+
+
 @app.post("/entries/add")
 def add_entry(
     customer: str = Form(...),
@@ -94,22 +99,23 @@ def add_entry(
     note: str = Form(""),
     year: int = Form(...),
     month: int = Form(...),
+    filter_customer: str = Form(""),
 ):
     start_iso = f"{date_}T{start_h}:{start_m}:00"
     end_date = date_ if f"{end_h}:{end_m}" > f"{start_h}:{start_m}" else (date.fromisoformat(date_) + timedelta(days=1)).isoformat()
     end_iso = f"{end_date}T{end_h}:{end_m}:00"
     db.add_entry(customer, activity, start_iso, end_iso, note)
-    return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
+    return _list_redirect(year, month, filter_customer)
 
 
 @app.post("/entries/{entry_id}/delete")
-def delete_entry(entry_id: int, year: int = Form(...), month: int = Form(...)):
+def delete_entry(entry_id: int, year: int = Form(...), month: int = Form(...), filter_customer: str = Form("")):
     db.delete_entry(entry_id)
-    return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
+    return _list_redirect(year, month, filter_customer)
 
 
 @app.get("/entries/{entry_id}/edit", response_class=HTMLResponse)
-def edit_entry_form(request: Request, entry_id: int):
+def edit_entry_form(request: Request, entry_id: int, customer: str = None):
     entry = db.get_entry(entry_id)
     if not entry:
         return RedirectResponse(url="/")
@@ -126,15 +132,16 @@ def edit_entry_form(request: Request, entry_id: int):
         month=start_dt.month,
         customers=db.list_customers(),
         activities=db.list_activities(),
+        filter_customer=customer or "",
     )
 
 
 @app.post("/entries/{entry_id}/duplicate")
-def duplicate_entry(entry_id: int, year: int = Form(...), month: int = Form(...)):
+def duplicate_entry(entry_id: int, year: int = Form(...), month: int = Form(...), filter_customer: str = Form("")):
     entry = db.get_entry(entry_id)
     if entry:
         db.add_entry(entry["customer"], entry["activity"], entry["start_time"], entry["end_time"], entry["note"])
-    return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
+    return _list_redirect(year, month, filter_customer)
 
 
 @app.post("/entries/{entry_id}/edit")
@@ -150,12 +157,13 @@ def edit_entry_submit(
     note: str = Form(""),
     year: int = Form(...),
     month: int = Form(...),
+    filter_customer: str = Form(""),
 ):
     start_iso = f"{date_}T{start_h}:{start_m}:00"
     end_date = date_ if f"{end_h}:{end_m}" > f"{start_h}:{start_m}" else (date.fromisoformat(date_) + timedelta(days=1)).isoformat()
     end_iso = f"{end_date}T{end_h}:{end_m}:00"
     db.update_entry(entry_id, customer, activity, start_iso, end_iso, note)
-    return RedirectResponse(url=f"/?year={year}&month={month}", status_code=303)
+    return _list_redirect(year, month, filter_customer)
 
 
 @app.get("/settings", response_class=HTMLResponse)
