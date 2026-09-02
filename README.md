@@ -2,8 +2,9 @@
 
 Dva lokální nástroje pro OSVČ: evidence času a fakturace. Žádný cloud, žádné předplatné — data v SQLite.
 
-- **[TimeTrack](timetrack/)** — zápis odpracovaného času, export do PDF
+- **[TimeTrack](timetrack/)** — zápis odpracovaného času, stopky, export do PDF
 - **[Fakturace](fakturace/)** — faktury, PDF/ISDOCX export, import z TimeTracku, párování plateb
+- **[tools/](tools/)** — stopky jako okno vždy navrchu + záchranné sítě proti zapomínání (logování adresářů/ssh, večerní rekonciliace, upomínky)
 
 ## Spuštění přes Docker Compose
 

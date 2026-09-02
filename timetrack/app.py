@@ -7,7 +7,7 @@ import re
 import unicodedata
 from datetime import datetime, date, timedelta
 from fastapi import FastAPI, Request, Form, Response
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from pathlib import Path
 from urllib.parse import quote
 from jinja2 import Environment, FileSystemLoader
@@ -198,6 +198,80 @@ def add_activity(name: str = Form(...)):
 def delete_activity(activity_id: int):
     db.delete_activity(activity_id)
     return RedirectResponse(url="/settings", status_code=303)
+
+
+# ---------- Widget: stopky ----------
+
+def _widget_state(saved: dict | None = None) -> dict:
+    timers = db.list_timers()
+    return {
+        "timers": timers,
+        "running": sum(1 for t in timers if t["state"] == "running"),
+        "saved": saved,
+        "now": datetime.now().replace(microsecond=0).isoformat(),
+    }
+
+
+@app.get("/widget", response_class=HTMLResponse)
+def widget_page(request: Request):
+    return render("widget.html",
+        customers=db.list_customers(),
+        activities=db.list_activities(),
+        state=_widget_state(),
+    )
+
+
+@app.get("/widget/state")
+def widget_state():
+    return JSONResponse(_widget_state())
+
+
+@app.post("/widget/start")
+def widget_start(customer: str = Form(...), activity: str = Form(""), note: str = Form("")):
+    db.start_timer(customer, activity, note)
+    return JSONResponse(_widget_state())
+
+
+@app.post("/widget/pause")
+def widget_pause(timer_id: int = Form(..., alias="id")):
+    db.pause_timer(timer_id)
+    return JSONResponse(_widget_state())
+
+
+@app.post("/widget/resume")
+def widget_resume(timer_id: int = Form(..., alias="id")):
+    db.resume_timer(timer_id)
+    return JSONResponse(_widget_state())
+
+
+@app.post("/widget/meta")
+def widget_meta(timer_id: int = Form(..., alias="id"), customer: str = Form(""),
+                activity: str = Form(""), note: str = Form("")):
+    db.update_timer_meta(timer_id, customer, activity, note)
+    return JSONResponse(_widget_state())
+
+
+@app.post("/widget/stop")
+def widget_stop(timer_id: int = Form(..., alias="id")):
+    saved = db.stop_timer(timer_id)
+    return JSONResponse(_widget_state(saved))
+
+
+@app.post("/widget/discard")
+def widget_discard(timer_id: int = Form(..., alias="id")):
+    db.discard_timer(timer_id)
+    return JSONResponse(_widget_state())
+
+
+@app.get("/api/day")
+def api_day(day: str = None):
+    """Entries for one day (default today), grouped by customer — for reconcile.py."""
+    day = day or date.today().isoformat()
+    entries = db.entries_for_date(day)
+    by_customer: dict[str, float] = {}
+    for e in entries:
+        by_customer[e["customer"]] = round(by_customer.get(e["customer"], 0.0) + e["hours"], 4)
+    return JSONResponse({"date": day, "entries": entries, "by_customer": by_customer})
 
 
 @app.get("/export/pdf")

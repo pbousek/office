@@ -1,0 +1,2 @@
+# Jen pro desktopové okno (desktop_widget.py) — ne pro server ani Docker.
+pywebview

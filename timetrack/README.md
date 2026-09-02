@@ -6,10 +6,17 @@ Jednoduchá lokální evidence odpracovaného času. Žádný cloud, žádné p�
 ## Co to umí
 
 - zápis záznamu: zákazník, činnost, čas od–do, nepovinná poznámka
+- **stopky** (`/widget`) — START / pauza / STOP; může běžet **víc timerů zároveň**
+  (dozor nad deployem u jednoho klienta + práce pro druhého — obojí účtovatelné),
+  nebo si timer zaparkuješ pauzou a vrátíš se k němu později.
+  Stav je na serveru (přežije reload i restart); STOP zapíše záznam, pauzy se vystřihnou
 - editace a mazání záznamů
 - filtrování podle měsíce/roku a podle zákazníka
 - export měsíčního souhrnu do PDF (rozdělené po zákaznících, mezisoučty,
   celkový součet), s plnou podporou české diakritiky
+
+Stopky jako samostatné okno vždy navrchu a záchranné sítě proti zapomínání
+(logování adresářů/ssh + večerní rekonciliace) jsou v [`../tools/`](../tools/).
 
 ## Spuštění
 
@@ -56,8 +63,9 @@ běžným způsobem (kopiya, rsync, cokoliv co už používáš).
 
 ## Struktura
 
-- `app.py` — FastAPI routy
-- `db.py` — SQLite vrstva (žádný ORM, čisté SQL)
+- `app.py` — FastAPI routy (přehled, `/widget` stopky, `/api/day` pro rekonciliaci)
+- `db.py` — SQLite vrstva (žádný ORM, čisté SQL), včetně stopek (tabulka `timers`)
 - `pdf_export.py` — generování měsíčního PDF reportu (reportlab)
-- `templates/` — Jinja2 šablony (index, edit)
+- `desktop_widget.py` — samostatné okno se stopkami (pywebview), viz `requirements-desktop.txt`
+- `templates/` — Jinja2 šablony (index, edit, widget)
 - `static/style.css` — styly

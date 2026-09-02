@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeTrack — stopky</title>
+<style>
+  :root {
+    --bg: #f7f7f9; --card: #fff; --ink: #1f2430; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2d3142; --accent-light: #4f5b75;
+    --danger: #b3261e; --ok: #1f7a44; --warn: #8a5a00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); padding: 10px; font-size: 14px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 9px; padding: 9px 10px; margin-bottom: 8px;
+  }
+  .card.run { border-left-color: var(--ok); }
+  .crow { display: flex; align-items: baseline; gap: 8px; }
+  .cust { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cust .act { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .clock {
+    font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; letter-spacing: .02em;
+  }
+  .clock.paused { color: var(--muted); }
+  .cwarn { color: var(--warn); font-size: 11px; margin-top: 3px; }
+  input.note {
+    width: 100%; margin: 6px 0; padding: 5px 7px; border: 1px solid transparent;
+    border-radius: 6px; font-size: 13px; background: #f2f2f4; color: var(--ink);
+  }
+  input.note:focus { outline: none; border-color: var(--accent-light); background: #fff; }
+  .cbtns { display: flex; gap: 6px; }
+  .cbtns button { flex: 1; }
+  .cbtns button.x { flex: 0 0 34px; }
+  button {
+    padding: 8px 10px; border: none; border-radius: 7px; background: var(--accent);
+    color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: var(--accent-light); }
+  button.sec { background: #fff; color: var(--accent); border: 1px solid var(--line); font-weight: 500; }
+  button.sec:hover { background: #f0f0f2; }
+  button.ok { background: var(--ok); color: #fff; border: none; }
+  button.x { background: #fff; color: var(--danger); border: 1px solid #e6c2bf; font-weight: 700; }
+  button.x:hover { background: #fbeceb; }
+  #newbox { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 10px; margin-bottom: 8px; }
+  .row { margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+  select, #newbox input {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 14px; background: #fff; color: var(--ink);
+  }
+  select:focus, #newbox input:focus { outline: none; border-color: var(--accent-light); }
+  #newbox button { width: 100%; }
+  #toggle-new { width: 100%; }
+  .toast { font-size: 12px; color: var(--ok); text-align: center; min-height: 16px; margin-bottom: 6px; }
+  #concurrent {
+    font-size: 12px; color: var(--accent); text-align: center; margin-bottom: 8px;
+    background: #eef0f4; border-radius: 7px; padding: 5px;
+  }
+  .hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+  a { color: var(--accent-light); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div id="concurrent" hidden></div>
+<div id="list"></div>
+
+<div id="newbox" hidden>
+  <div class="row">
+    <label for="w-customer">Zákazník</label>
+    <select id="w-customer">
+      <option value="" disabled selected>— vyber —</option>
+      {% for c in customers %}<option value="{{ c.name }}">{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="row">
+    <label for="w-activity">Činnost (nepovinné)</label>
+    <input id="w-activity" list="w-activities" autocomplete="off">
+    <datalist id="w-activities">
+      {% for a in activities %}<option value="{{ a.name }}">{% endfor %}
+    </datalist>
+  </div>
+  <div class="row">
+    <label for="w-note">Popisek (nepovinné)</label>
+    <input id="w-note" autocomplete="off">
+  </div>
+  <div class="row"><button id="btn-start">▶ Start</button></div>
+  {% if not customers %}
+  <div class="hint">Nejdřív přidej zákazníky v <a href="/settings" target="_blank">Nastavení</a>.</div>
+  {% endif %}
+</div>
+
+<button id="toggle-new" class="sec" hidden>+ nový timer</button>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const S = {{ state | tojson }};
+let clocks = {};        // id -> {worked, at, running}
+let newOpen = false;
+let metaPending = null;  // {id, value}
+let metaTimer = null;
+
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function fmt(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+const live = (c) => c.worked + (c.running ? (Date.now() - c.at) / 1000 : 0);
+
+function tick() {
+  for (const id in clocks) {
+    const el = $("clk-" + id);
+    if (!el) continue;
+    const sec = live(clocks[id]);
+    el.textContent = fmt(sec);
+    const w = $("warn-" + id);
+    if (w) w.hidden = sec <= 12 * 3600;
+  }
+}
+setInterval(tick, 1000);
+
+function cardHTML(t) {
+  const running = t.state === "running";
+  const act = t.activity ? ` <span class="act">· ${esc(t.activity)}</span>` : "";
+  return `<div class="card ${running ? "run" : ""}" data-id="${t.id}"
+    data-customer="${esc(t.customer)}" data-activity="${esc(t.activity)}">
+    <div class="crow">
+      <span class="cust">${esc(t.customer || "(bez zákazníka)")}${act}</span>
+      <span class="clock ${running ? "" : "paused"}" id="clk-${t.id}">0:00:00</span>
+    </div>
+    <div class="cwarn" id="warn-${t.id}" hidden>běží přes 12 h — nezapomněl jsi ho vypnout?</div>
+    <input class="note" data-id="${t.id}" placeholder="popisek" value="${esc(t.note)}">
+    <div class="cbtns">
+      <button class="${running ? "sec" : "ok"}" data-act="${running ? "pause" : "resume"}" data-id="${t.id}">
+        ${running ? "⏸ Pauza" : "▶ Pokračovat"}</button>
+      <button data-act="stop" data-id="${t.id}">■ Stop</button>
+      <button class="x" data-act="discard" data-id="${t.id}" title="zahodit bez uložení">×</button>
+    </div>
+  </div>`;
+}
+
+function render(state) {
+  if (state.saved) {
+    $("toast").textContent = `Uloženo: ${fmt(state.saved.worked_seconds)} — ${state.saved.customer}`;
+    setTimeout(() => {
+      if ($("toast").textContent.startsWith("Uloženo")) $("toast").textContent = "";
+    }, 6000);
+  }
+  const timers = state.timers || [];
+  $("list").innerHTML = timers.map(cardHTML).join("");
+  clocks = {};
+  for (const t of timers) clocks[t.id] = { worked: t.worked_seconds, at: Date.now(), running: t.state === "running" };
+
+  const nrun = (state.running != null) ? state.running : timers.filter(t => t.state === "running").length;
+  $("concurrent").hidden = nrun < 2;
+  if (nrun >= 2) $("concurrent").textContent = `▶▶ souběžný běh (${nrun} stopky)`;
+
+  const empty = timers.length === 0;
+  $("newbox").hidden = !(empty || newOpen);
+  $("toggle-new").hidden = empty || newOpen;
+  tick();
+}
+
+function flushMeta() {
+  if (!metaPending) return;
+  const { id, value } = metaPending;
+  metaPending = null;
+  clearTimeout(metaTimer);
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  fetch("/widget/meta", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      id,
+      customer: card ? card.dataset.customer : "",
+      activity: card ? card.dataset.activity : "",
+      note: value,
+    }),
+  }).catch(() => {});
+}
+
+async function post(path, body) {
+  flushMeta();
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(body || {}),
+  });
+  render(await r.json());
+}
+
+async function poll() {
+  const ae = document.activeElement;
+  if (ae && ae.matches && ae.matches("input, select")) return;  // uživatel píše
+  try {
+    const r = await fetch("/widget/state");
+    render(await r.json());
+  } catch (e) { /* offline — hodiny tikají dál lokálně */ }
+}
+setInterval(poll, 20000);
+
+// --- list (delegace) ---
+$("list").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  if (btn.dataset.act === "discard" && !confirm("Zahodit tenhle timer bez uložení?")) return;
+  newOpen = false;
+  post("/widget/" + btn.dataset.act, { id: btn.dataset.id });
+});
+$("list").addEventListener("input", (e) => {
+  if (!e.target.matches("input.note")) return;
+  metaPending = { id: e.target.dataset.id, value: e.target.value };
+  clearTimeout(metaTimer);
+  metaTimer = setTimeout(flushMeta, 700);
+});
+$("list").addEventListener("blur", (e) => {
+  if (e.target.matches("input.note")) flushMeta();
+}, true);
+
+// --- nový timer ---
+$("toggle-new").addEventListener("click", () => {
+  newOpen = true;
+  $("newbox").hidden = false;
+  $("toggle-new").hidden = true;
+  $("w-customer").focus();
+});
+$("btn-start").addEventListener("click", () => {
+  const customer = $("w-customer").value;
+  if (!customer) { $("w-customer").focus(); return; }
+  post("/widget/start", {
+    customer,
+    activity: $("w-activity").value,
+    note: $("w-note").value,
+  }).then(() => {
+    $("w-customer").selectedIndex = 0;
+    $("w-activity").value = "";
+    $("w-note").value = "";
+    newOpen = false;
+    const has = $("list").children.length > 0;
+    $("newbox").hidden = has;
+    $("toggle-new").hidden = !has;
+  }).catch(() => {});
+});
+
+render(S);
+</script>
+</body>
+</html>

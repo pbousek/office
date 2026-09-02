@@ -1,0 +1,14 @@
+# Mapování pracovní adresář -> zákazník (pro reconcile.py).
+# Zkopíruj do ~/.config/timetrack/dirmap a uprav.
+#
+# Formát: PREFIX<TAB>Jméno zákazníka     (nebo:  PREFIX -> Jméno zákazníka)
+# - PREFIX se porovnává jako začátek absolutní cesty; vyhrává nejdelší shoda
+# - jméno zákazníka musí sedět na jméno v TimeTracku (kvůli porovnání se záznamy)
+# - "__skip__" = tenhle adresář ignorovat (interní práce, hobby projekty…)
+# - řádky od # jsou komentáře
+
+/home/pbo/work/acme        -> Acme s.r.o.
+/home/pbo/work/globex      -> Globex a.s.
+/home/pbo/ansible/acme     -> Acme s.r.o.
+/home/pbo/sundown          -> __skip__
+/home/pbo/dotfiles         -> __skip__

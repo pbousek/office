@@ -1,0 +1,13 @@
+# Mapování ssh cíl -> zákazník (pro reconcile.py).
+# Zkopíruj do ~/.config/timetrack/hostmap a uprav.
+#
+# Formát: VZOR<TAB>Jméno zákazníka       (nebo:  VZOR -> Jméno zákazníka)
+# - VZOR se porovnává přes fnmatch proti celému argumentu ssh i proti hostu
+#   (např. řádek "root@srv1.acme.cz ..." matchne vzor "*acme.cz*" i "*.acme.cz")
+# - vyhrává první shoda shora
+# - "__skip__" = ignorovat
+
+*acme.cz*        -> Acme s.r.o.
+10.20.30.*       -> Acme s.r.o.
+*globex*         -> Globex a.s.
+myhomelab        -> __skip__
