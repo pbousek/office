@@ -35,6 +35,11 @@ Obě appky sdílejí uživatelské účty (`office_auth/`, SQLite `auth.db` ve v
 - Záznamy času a stopky jsou **per uživatel**; zákazníci a činnosti jsou společné. Fakturace (billing, import z TT) počítá s hodinami všech uživatelů.
 - Ve Fakturaci je *Nastavení* (firma, SMTP) jen pro adminy.
 - Přihlášení drží 30 dní (session cookie, prodlužuje se používáním). Po 10 neúspěšných pokusech z jedné IP se přihlášení na 15 minut zablokuje.
+- V horní liště je odkaz do druhé appky (jen pokud do ní uživatel smí). Adresy se nastavují v `.env` vedle `docker-compose.yml`:
+  ```
+  TIMETRACK_PUBLIC_URL=https://tt.example.cz
+  FAKTURACE_PUBLIC_URL=https://inv.example.cz
+  ```
 - Skripty v `tools/` se autentizují API tokenem (👤 účet → API token, env `TIMETRACK_TOKEN`).
 
 Data jedné instance jsou společná pro všechny její uživatele (jedna firma, jedna fakturační řada). Pro jinou firmu spusť samostatnou instanci, tj. vlastní compose projekt a porty:

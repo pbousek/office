@@ -1,5 +1,6 @@
 {% set u = current_user() %}{% if u %}
 <div class="user-menu" style="display:flex; gap:10px; align-items:center; justify-content:flex-end; font-size:0.9em; margin-bottom:8px;">
+  {% for a in other_apps() %}<a class="link" href="{{ a.url }}">{{ a.icon }} {{ a.label }}</a>{% endfor %}
   <a class="link" href="/account">👤 {{ u.username }}</a>
   {% if u.is_admin %}<a class="link" href="/admin/users">Uživatelé</a>{% endif %}
   <form method="post" action="/logout" style="display:inline; margin:0;"><button type="submit" class="btn btn-sm btn-secondary">Odhlásit</button></form>

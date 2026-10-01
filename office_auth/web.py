@@ -1,4 +1,5 @@
 """Login, accounts and user management shared by TimeTrack and Fakturace."""
+import os
 import time
 from contextvars import ContextVar
 from pathlib import Path
@@ -15,6 +16,12 @@ COOKIE = "office_session"
 MIN_PASSWORD = 8
 PUBLIC_PATHS = ("/login", "/static/", "/favicon.ico")
 APP_LABELS = {"timetrack": "TimeTrack", "fakturace": "Fakturace"}
+APP_ICONS = {"timetrack": "⏱", "fakturace": "🧾"}
+# Public address of each app, for links between them.
+APP_URLS = {
+    "timetrack": os.environ.get("TIMETRACK_PUBLIC_URL", "http://localhost:8731"),
+    "fakturace": os.environ.get("FAKTURACE_PUBLIC_URL", "http://localhost:8732"),
+}
 
 _current_user: ContextVar[dict | None] = ContextVar("office_user", default=None)
 _jinja = Environment(loader=FileSystemLoader(str(Path(__file__).parent / "templates")),
@@ -24,6 +31,15 @@ _jinja = Environment(loader=FileSystemLoader(str(Path(__file__).parent / "templa
 def current_user() -> dict | None:
     """The logged-in user of the request being handled (usable from templates)."""
     return _current_user.get()
+
+
+def other_apps(this_app: str) -> list[dict]:
+    """Links to the other apps the current user may enter."""
+    user = current_user()
+    if not user:
+        return []
+    return [{"label": APP_LABELS[key], "icon": APP_ICONS[key], "url": APP_URLS[key]}
+            for key in APP_LABELS if key != this_app and user[f"can_{key}"]]
 
 
 # ---------- Brute-force throttle (per client IP, in memory) ----------
@@ -142,11 +158,13 @@ def setup(app: FastAPI, app_key: str, jinja_env: Environment,
     store.init_db()
     app_title = APP_LABELS[app_key]
     jinja_env.globals["current_user"] = current_user
+    jinja_env.globals["other_apps"] = lambda: other_apps(app_key)
     router = APIRouter()
 
     def page(template: str, request: Request, status: int = 200, **ctx) -> HTMLResponse:
         ctx.setdefault("user", getattr(request.state, "user", None))
         return _page(status, template, app_title=app_title, app_key=app_key,
+                     other_apps=other_apps(app_key),
                      app_labels=APP_LABELS, min_password=MIN_PASSWORD, **ctx)
 
     # --- login / logout ---

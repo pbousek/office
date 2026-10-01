@@ -9,6 +9,8 @@ services:
     environment:
       - AUTH_DB_PATH=/auth_data/auth.db
       - OFFICE_ADMIN_PASSWORD
+      - TIMETRACK_PUBLIC_URL=${TIMETRACK_PUBLIC_URL:-http://localhost:8731}
+      - FAKTURACE_PUBLIC_URL=${FAKTURACE_PUBLIC_URL:-http://localhost:8732}
     volumes:
       - timetrack_data:/app/data
       - auth_data:/auth_data
@@ -24,6 +26,8 @@ services:
       - TIMETRACK_DB_PATH=/timetrack_data/timetrack.db
       - AUTH_DB_PATH=/auth_data/auth.db
       - OFFICE_ADMIN_PASSWORD
+      - TIMETRACK_PUBLIC_URL=${TIMETRACK_PUBLIC_URL:-http://localhost:8731}
+      - FAKTURACE_PUBLIC_URL=${FAKTURACE_PUBLIC_URL:-http://localhost:8732}
     volumes:
       - fakturace_data:/app/data
       - timetrack_data:/timetrack_data:ro
