@@ -2,7 +2,7 @@
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fakturace — {{ 'Nová faktura' if not invoice else 'Upravit ' + invoice.number }}</title>
-<link rel="stylesheet" href="/static/style.css?v=4"></head>
+<link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 
@@ -61,8 +61,9 @@
 
     <!-- TimeTrack import -->
     {% if tt_available %}
+    {% set tt_from, tt_to = prev_month_range() %}
     <div class="card" style="background:var(--bg);margin-bottom:12px;">
-      <h2 style="font-size:13px;">Import ze záznamu z TimeTracku</h2>
+      <h2 style="font-size:15px;">Import ze záznamu z TimeTracku</h2>
       <div class="form-row">
         <div class="field wide">
           <label>Zákazník v TimeTracku</label>
@@ -73,18 +74,18 @@
         </div>
         <div class="field narrow">
           <label>Od</label>
-          <input type="date" id="tt-from">
+          <input type="date" id="tt-from" value="{{ tt_from }}">
         </div>
         <div class="field narrow">
           <label>Do</label>
-          <input type="date" id="tt-to">
+          <input type="date" id="tt-to" value="{{ tt_to }}">
         </div>
         <div class="field fixed">
           <label>&nbsp;</label>
           <button type="button" onclick="loadTTEntries()" class="btn btn-secondary">Načíst záznamy</button>
         </div>
       </div>
-      <div id="tt-preview" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+      <div id="tt-preview" style="margin-top:10px;font-size:15px;color:var(--muted);"></div>
     </div>
     {% endif %}
 

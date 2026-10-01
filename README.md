@@ -26,9 +26,22 @@ git pull
 docker compose up --build -d
 ```
 
-## Bezpečnost
+## Přihlášení a uživatelé
 
-Appky nemají autentizaci — jsou navrženy pro provoz jen na localhostu nebo za reverse proxy s vlastní autentizací (nginx, Caddy...). Docker Compose binduje porty na `127.0.0.1`.
+Obě appky sdílejí uživatelské účty (`office_auth/`, SQLite `auth.db` ve volume `auth_data`).
+
+- Při prvním startu vznikne účet **`admin` / `admin`** (nebo heslo z env `OFFICE_ADMIN_PASSWORD`) a po přihlášení si **musí změnit heslo**. Jméno jde v *Uživatelé* přejmenovat.
+- Admin v *Uživatelé* zakládá další účty a u každého zaškrtává, do které appky smí (TimeTrack / Fakturace) a jestli je admin. Nový uživatel si heslo při prvním přihlášení mění.
+- Záznamy času a stopky jsou **per uživatel**; zákazníci a činnosti jsou společné. Fakturace (billing, import z TT) počítá s hodinami všech uživatelů.
+- Ve Fakturaci je *Nastavení* (firma, SMTP) jen pro adminy.
+- Přihlášení drží 30 dní (session cookie, prodlužuje se používáním). Po 10 neúspěšných pokusech z jedné IP se přihlášení na 15 minut zablokuje.
+- Skripty v `tools/` se autentizují API tokenem (👤 účet → API token, env `TIMETRACK_TOKEN`).
+
+Data jedné instance jsou společná pro všechny její uživatele (jedna firma, jedna fakturační řada). Pro jinou firmu spusť samostatnou instanci, tj. vlastní compose projekt a porty:
+
+```bash
+docker compose -p office-pepa up --build -d   # porty uprav v kopii docker-compose.yml
+```
 
 ## Lokální spuštění bez Dockeru
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fakturace — Fakturovat</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Fakturace — Fakturovat</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 
@@ -25,7 +25,7 @@
       <label>Rok</label>
       <select name="year">
         {% for y in years %}
-        <option value="{{ y }}" {% if y == today.year %}selected{% endif %}>{{ y }}</option>
+        <option value="{{ y }}" {% if y == period.year %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
       </select>
     </div>
@@ -33,7 +33,7 @@
       <label>Měsíc</label>
       <select name="month">
         {% for num, name in months %}
-        <option value="{{ num }}" {% if num == today.month %}selected{% endif %}>{{ num }} — {{ name }}</option>
+        <option value="{{ num }}" {% if num == period.month %}selected{% endif %}>{{ num }} — {{ name }}</option>
         {% endfor %}
       </select>
     </div>

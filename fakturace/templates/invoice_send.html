@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Odeslat fakturu {{ invoice.number }}</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Odeslat fakturu {{ invoice.number }}</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 
@@ -31,7 +31,7 @@
       <label>Text zprávy</label>
       <textarea name="body" rows="8" style="width:100%;max-width:500px;font-family:inherit;">{{ body }}</textarea>
     </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;">
+    <div style="font-size:15px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;">
       <span>Přílohy:</span>
       <b>faktura_{{ invoice.number }}.pdf</b>
       <label style="font-weight:normal;display:inline-flex;align-items:center;gap:4px;"><input type="checkbox" name="attach_isdoc" style="width:auto;padding:0;"> ISDOC (.isdocx)</label>

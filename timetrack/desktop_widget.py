@@ -27,4 +27,4 @@ if __name__ == "__main__":
         on_top=True,
         resizable=True,
     )
-    webview.start()
+    webview.start(private_mode=False)  # keep the login cookie between launches

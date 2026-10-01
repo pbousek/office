@@ -1,0 +1,11 @@
+# Build context is the repo root for both images (they share office_auth/).
+.git
+**/data/
+**/__pycache__/
+**/*.pyc
+**/*.db
+**/.env
+**/Screenshot_*
+fakturace/import/
+fakturace/banka/
+tools/

@@ -4,6 +4,7 @@ Spuštění:  python app.py
 Otevři:    http://localhost:8732
 """
 import calendar as _calendar
+import sys
 from datetime import date, timedelta
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
@@ -11,6 +12,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from typing import Annotated
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # office_auth (local run)
+import office_auth
 import db
 import ares as ares_mod
 import timetrack as tt
@@ -26,6 +29,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 jinja_env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
 jinja_env.filters["money"] = lambda v: f"{v:,.2f}".replace(",", " ").replace(".", ",")
 jinja_env.filters["enumerate"] = enumerate
+office_auth.setup(app, "fakturace", jinja_env, admin_paths=("/settings",))
 
 def _fmt_hours(h: float) -> str:
     h = float(h or 0)
@@ -37,6 +41,14 @@ def _fmt_hours(h: float) -> str:
     return f"{hours}:{minutes:02d}"
 
 jinja_env.filters["fmt_hours"] = _fmt_hours
+
+
+def _prev_month_range() -> tuple[str, str]:
+    """First and last day of the previous month — the usual billing period."""
+    last = date.today().replace(day=1) - timedelta(days=1)
+    return last.replace(day=1).isoformat(), last.isoformat()
+
+jinja_env.globals["prev_month_range"] = _prev_month_range
 
 import json as _json
 jinja_env.filters["fromjson"] = lambda s: _json.loads(s or "{}")
@@ -426,8 +438,9 @@ def billing_page(request: Request, customer_id: int = 0):
     customers = db.list_customers()
     years = list(range(today.year, today.year - 3, -1))
     months = [(i, _MONTH_NAMES[i]) for i in range(1, 13)]
+    period = date.fromisoformat(_prev_month_range()[0])
     return render("billing.html", customers=customers, years=years, months=months,
-                  today=today, selected_customer_id=customer_id)
+                  today=today, period=period, selected_customer_id=customer_id)
 
 
 @app.get("/billing/preview", response_class=HTMLResponse)

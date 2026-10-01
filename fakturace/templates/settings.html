@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fakturace — Nastavení</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Fakturace — Nastavení</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 
@@ -115,7 +115,7 @@
 
 <div class="card">
   <h2>E-mail / SMTP</h2>
-  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+  <p style="color:var(--muted);font-size:15px;margin:0 0 12px 0;">
     Nastavení pro odesílání faktur e-mailem. Port 587 + STARTTLS (standardní).
   </p>
   <form method="post" action="/settings">
@@ -169,7 +169,7 @@
 
 <div class="card">
   <h2>Razítko a podpis</h2>
-  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+  <p style="color:var(--muted);font-size:15px;margin:0 0 12px 0;">
     Obrázek (PNG nebo JPG) se zobrazí v pravém dolním rohu faktury. Ideálně průhledné PNG s razítkem nebo podpisem.
   </p>
   {% if stamp_exists %}
@@ -209,7 +209,7 @@ function aresInput(val) {
       if (!results.length) { list.innerHTML = '<li style="color:var(--muted);">Nic nenalezeno.</li>'; return; }
       aresCache = results;
       list.innerHTML = results.map((r, i) =>
-        `<li onclick="fillForm(${i})"><b>${r.name}</b> <span style="color:var(--muted);font-size:12px;">IČO: ${r.ico} · ${r.city}</span></li>`
+        `<li onclick="fillForm(${i})"><b>${r.name}</b> <span style="color:var(--muted);font-size:14px;">IČO: ${r.ico} · ${r.city}</span></li>`
       ).join('');
     } catch(e) {
       list.innerHTML = '<li style="color:var(--danger);">Chyba připojení k ARES.</li>';

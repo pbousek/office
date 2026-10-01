@@ -1,0 +1,16 @@
+{% extends "_base.html" %}{% set narrow = true %}
+{% block title %}Přihlášení{% endblock %}
+{% block content %}
+<div class="card auth-narrow">
+  <h2>{{ "⏱" if app_key == "timetrack" else "🧾" }} {{ app_title }} — přihlášení</h2>
+  {% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field"><label>Uživatel</label>
+      <input type="text" name="username" value="{{ username or '' }}" autocomplete="username" autofocus required></div>
+    <div class="field"><label>Heslo</label>
+      <input type="password" name="password" autocomplete="current-password" required></div>
+    <button type="submit" class="btn">Přihlásit</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "_base.html" %}{% set narrow = true %}
+{% block title %}Přístup odepřen{% endblock %}
+{% block content %}
+<div class="card auth-narrow">
+  <h2>Přístup odepřen</h2>
+  {% if admin_only %}
+  <p>Tahle stránka je jen pro administrátory.</p>
+  <a class="btn btn-secondary" href="/">Zpět</a>
+  {% else %}
+  <p>Uživatel <b>{{ user.username }}</b> nemá přístup do aplikace {{ app_title }}.</p>
+  {% endif %}
+  <form method="post" action="/logout" style="margin-top:12px"><button type="submit" class="btn btn-sm btn-secondary">Odhlásit</button></form>
+</div>
+{% endblock %}

@@ -2,9 +2,9 @@
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fakturovat {{ customer.name }} {{ month }}/{{ year }}</title>
-<link rel="stylesheet" href="/static/style.css?v=4">
+<link rel="stylesheet" href="/static/style.css?v=5">
 <style>
-.section-title { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase;
+.section-title { font-size: 15px; font-weight: 700; color: var(--accent); text-transform: uppercase;
                  letter-spacing: .04em; margin: 0 0 8px 0; }
 </style>
 </head>
@@ -14,7 +14,7 @@
 <div class="page-header" style="margin-bottom:16px;">
   <div>
     <h1 style="font-size:20px;margin:0;">{{ customer.name }}</h1>
-    <div style="color:var(--muted);font-size:14px;">{{ month_name }} {{ year }}</div>
+    <div style="color:var(--muted);font-size:16px;">{{ month_name }} {{ year }}</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     {% if tt_available %}
@@ -44,7 +44,7 @@
   za {{ month_name }} {{ year }}.
 </div>
 {% else %}
-<div style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+<div style="color:var(--muted);font-size:15px;margin-bottom:16px;">
   TimeTrack: <b>{{ entries|length }}</b> záznamů, celkem <b>{{ total_hours | fmt_hours }} h</b>
 </div>
 {% endif %}

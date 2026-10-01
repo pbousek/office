@@ -2,7 +2,7 @@
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fakturace — {{ 'Nový zákazník' if not customer else customer.name }}</title>
-<link rel="stylesheet" href="/static/style.css?v=4"></head>
+<link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 
@@ -96,7 +96,7 @@ function aresInput(val) {
       }
       aresCache = results;
       list.innerHTML = results.map((r, i) =>
-        `<li onclick="fillForm(${i})"><b>${r.name}</b> <span style="color:var(--muted);font-size:12px;">IČO: ${r.ico} · ${r.city}</span></li>`
+        `<li onclick="fillForm(${i})"><b>${r.name}</b> <span style="color:var(--muted);font-size:14px;">IČO: ${r.ico} · ${r.city}</span></li>`
       ).join('');
     } catch(e) {
       list.innerHTML = '<li style="color:var(--danger);">Chyba připojení k ARES.</li>';

@@ -72,6 +72,14 @@ def init_db():
             conn.execute("DROP TABLE timer_state")
         except sqlite3.OperationalError:
             pass
+        # Per-user ownership (office_auth user id). Rows from before accounts
+        # existed belong to user 1 — the initial admin account.
+        for table in ("entries", "timers"):
+            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if "user_id" not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER")
+            conn.execute(f"UPDATE {table} SET user_id = 1 WHERE user_id IS NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id)")
         # Migrate existing customers/activities from entries on first run
         conn.execute("""
             INSERT OR IGNORE INTO customers (name)
@@ -94,43 +102,43 @@ def get_conn():
         conn.close()
 
 
-def add_entry(customer: str, activity: str, start_time: str, end_time: str, note: str = ""):
+def add_entry(user_id: int, customer: str, activity: str, start_time: str, end_time: str, note: str = ""):
     with get_conn() as conn:
         cur = conn.execute(
-            """INSERT INTO entries (customer, activity, start_time, end_time, note, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (customer.strip(), activity.strip(), start_time, end_time, note.strip(),
+            """INSERT INTO entries (user_id, customer, activity, start_time, end_time, note, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, customer.strip(), activity.strip(), start_time, end_time, note.strip(),
              datetime.now().isoformat(timespec="seconds")),
         )
         conn.commit()
         return cur.lastrowid
 
 
-def update_entry(entry_id: int, customer: str, activity: str, start_time: str, end_time: str, note: str = ""):
+def update_entry(user_id: int, entry_id: int, customer: str, activity: str, start_time: str, end_time: str, note: str = ""):
     with get_conn() as conn:
         conn.execute(
             """UPDATE entries SET customer=?, activity=?, start_time=?, end_time=?, note=?
-               WHERE id=?""",
-            (customer.strip(), activity.strip(), start_time, end_time, note.strip(), entry_id),
+               WHERE id=? AND user_id=?""",
+            (customer.strip(), activity.strip(), start_time, end_time, note.strip(), entry_id, user_id),
         )
         conn.commit()
 
 
-def delete_entry(entry_id: int):
+def delete_entry(user_id: int, entry_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM entries WHERE id=?", (entry_id,))
+        conn.execute("DELETE FROM entries WHERE id=? AND user_id=?", (entry_id, user_id))
         conn.commit()
 
 
-def get_entry(entry_id: int):
+def get_entry(user_id: int, entry_id: int):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
+        row = conn.execute("SELECT * FROM entries WHERE id=? AND user_id=?", (entry_id, user_id)).fetchone()
         return dict(row) if row else None
 
 
-def list_entries(year: int = None, month: int = None, customer: str = None):
-    query = "SELECT * FROM entries WHERE 1=1"
-    params = []
+def list_entries(user_id: int, year: int = None, month: int = None, customer: str = None):
+    query = "SELECT * FROM entries WHERE user_id = ?"
+    params = [user_id]
     if year and month:
         prefix = f"{year:04d}-{month:02d}"
         query += " AND start_time LIKE ?"
@@ -184,21 +192,22 @@ def delete_activity(activity_id: int):
         conn.commit()
 
 
-def list_months():
-    """Return distinct year-month strings present in the data, newest first."""
+def list_months(user_id: int):
+    """Return distinct year-month strings present in the user's data, newest first."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT DISTINCT substr(start_time, 1, 7) AS ym FROM entries ORDER BY ym DESC"
+            "SELECT DISTINCT substr(start_time, 1, 7) AS ym FROM entries WHERE user_id = ? ORDER BY ym DESC",
+            (user_id,),
         ).fetchall()
         return [r["ym"] for r in rows]
 
 
-def entries_for_date(day: str) -> list[dict]:
-    """Entries whose start_time falls on the given YYYY-MM-DD, with duration hours."""
+def entries_for_date(user_id: int, day: str) -> list[dict]:
+    """The user's entries whose start_time falls on the given YYYY-MM-DD, with duration hours."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM entries WHERE start_time LIKE ? ORDER BY start_time",
-            (f"{day}%",),
+            "SELECT * FROM entries WHERE user_id = ? AND start_time LIKE ? ORDER BY start_time",
+            (user_id, f"{day}%"),
         ).fetchall()
     out = []
     for r in rows:
@@ -247,38 +256,40 @@ def _timer_dict(row, now: datetime) -> dict:
     }
 
 
-def list_timers() -> list[dict]:
-    """All active timers, running ones first, then by creation order."""
+def list_timers(user_id: int) -> list[dict]:
+    """The user's active timers, running ones first, then by creation order."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM timers ORDER BY (state = 'running') DESC, id"
+            "SELECT * FROM timers WHERE user_id = ? ORDER BY (state = 'running') DESC, id",
+            (user_id,),
         ).fetchall()
     now = _now()
     return [_timer_dict(r, now) for r in rows]
 
 
-def running_timer_count() -> int:
+def running_timer_count(user_id: int) -> int:
     with get_conn() as conn:
-        return conn.execute("SELECT COUNT(*) FROM timers WHERE state = 'running'").fetchone()[0]
+        return conn.execute("SELECT COUNT(*) FROM timers WHERE user_id = ? AND state = 'running'",
+                            (user_id,)).fetchone()[0]
 
 
-def start_timer(customer: str, activity: str = "", note: str = "") -> int:
+def start_timer(user_id: int, customer: str, activity: str = "", note: str = "") -> int:
     """Start a new timer. Runs alongside any others. Returns the new timer id."""
     now = _now().isoformat()
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO timers
-               (customer, activity, note, started_at, banked_seconds, segment_started_at, state, created_at)
-               VALUES (?, ?, ?, ?, 0, ?, 'running', ?)""",
-            (customer.strip(), activity.strip(), note.strip(), now, now, now),
+               (user_id, customer, activity, note, started_at, banked_seconds, segment_started_at, state, created_at)
+               VALUES (?, ?, ?, ?, ?, 0, ?, 'running', ?)""",
+            (user_id, customer.strip(), activity.strip(), note.strip(), now, now, now),
         )
         conn.commit()
         return cur.lastrowid
 
 
-def pause_timer(timer_id: int):
+def pause_timer(user_id: int, timer_id: int):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM timers WHERE id = ?", (timer_id,)).fetchone()
+        row = conn.execute("SELECT * FROM timers WHERE id = ? AND user_id = ?", (timer_id, user_id)).fetchone()
         if not row or row["state"] != "running":
             return
         conn.execute(
@@ -288,10 +299,10 @@ def pause_timer(timer_id: int):
         conn.commit()
 
 
-def resume_timer(timer_id: int):
+def resume_timer(user_id: int, timer_id: int):
     """Resume a parked timer. Other running timers keep running."""
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM timers WHERE id = ?", (timer_id,)).fetchone()
+        row = conn.execute("SELECT * FROM timers WHERE id = ? AND user_id = ?", (timer_id, user_id)).fetchone()
         if not row or row["state"] == "running":
             return
         conn.execute(
@@ -301,20 +312,20 @@ def resume_timer(timer_id: int):
         conn.commit()
 
 
-def update_timer_meta(timer_id: int, customer: str, activity: str, note: str):
+def update_timer_meta(user_id: int, timer_id: int, customer: str, activity: str, note: str):
     with get_conn() as conn:
         conn.execute(
-            "UPDATE timers SET customer = ?, activity = ?, note = ? WHERE id = ?",
-            (customer.strip(), activity.strip(), note.strip(), timer_id),
+            "UPDATE timers SET customer = ?, activity = ?, note = ? WHERE id = ? AND user_id = ?",
+            (customer.strip(), activity.strip(), note.strip(), timer_id, user_id),
         )
         conn.commit()
 
 
-def stop_timer(timer_id: int) -> dict | None:
+def stop_timer(user_id: int, timer_id: int) -> dict | None:
     """Save one timer as an entry and remove it.
     Returns the created entry dict, or None if < 60 s worked / no customer."""
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM timers WHERE id = ?", (timer_id,)).fetchone()
+        row = conn.execute("SELECT * FROM timers WHERE id = ? AND user_id = ?", (timer_id, user_id)).fetchone()
         if not row:
             return None
         worked = _timer_worked_seconds(row, _now())
@@ -324,14 +335,14 @@ def stop_timer(timer_id: int) -> dict | None:
         return None
     start_dt = datetime.fromisoformat(row["started_at"])
     end_iso = (start_dt + timedelta(seconds=worked)).isoformat(timespec="seconds")
-    entry_id = add_entry(row["customer"], row["activity"],
+    entry_id = add_entry(user_id, row["customer"], row["activity"],
                          start_dt.isoformat(timespec="seconds"), end_iso, row["note"])
     return {"id": entry_id, "customer": row["customer"], "activity": row["activity"],
             "note": row["note"], "start_time": start_dt.isoformat(timespec="seconds"),
             "end_time": end_iso, "worked_seconds": worked}
 
 
-def discard_timer(timer_id: int):
+def discard_timer(user_id: int, timer_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM timers WHERE id = ?", (timer_id,))
+        conn.execute("DELETE FROM timers WHERE id = ? AND user_id = ?", (timer_id, user_id))
         conn.commit()

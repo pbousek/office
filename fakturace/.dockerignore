@@ -1,8 +1,0 @@
-data/
-__pycache__/
-*.pyc
-*.db
-.env
-Screenshot_*
-import/
-banka/

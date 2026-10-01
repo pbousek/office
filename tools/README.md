@@ -112,6 +112,7 @@ pošlou se i tam (funguje i na mobil).
 | proměnná | výchozí | význam |
 |---|---|---|
 | `TIMETRACK_URL` | `http://localhost:8731` | adresa appky |
+| `TIMETRACK_TOKEN` | — | API token (TimeTrack → 👤 účet → API token); nutný, jakmile appka vyžaduje přihlášení |
 | `TT_LOG_DIR` | `~/.local/share/timetrack` | kam se loguje |
 | `TT_CONFIG_DIR` | `~/.config/timetrack` | dirmap / hostmap |
 | `TT_IDLE_MIN` | `15` | mezera, která ukončí blok práce |

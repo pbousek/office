@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tarif — {{ customer.name }}</title><link rel="stylesheet" href="/static/style.css?v=4">
+<title>Tarif — {{ customer.name }}</title><link rel="stylesheet" href="/static/style.css?v=5">
 <style>
 .tariff-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-.tariff-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; padding: 4px 8px; text-align: left; }
+.tariff-table th { font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; padding: 4px 8px; text-align: left; }
 .tariff-table td { padding: 4px 6px; vertical-align: middle; }
-.tariff-table input[type=text], .tariff-table input[type=number] { padding: 6px 8px; font-size: 13px; }
+.tariff-table input[type=text], .tariff-table input[type=number] { padding: 6px 8px; font-size: 15px; }
 .tariff-table input.w-desc { width: 100%; min-width: 180px; }
 .tariff-table input.w-price { width: 90px; }
 .tariff-table input.w-unit { width: 60px; }
@@ -66,7 +66,7 @@
     <button type="button" class="btn btn-secondary btn-sm" onclick="addFixedRow()">+ Přidat položku</button>
 
     <h2 style="margin-top:20px;">Sazby (tiery)</h2>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 10px 0;">
+    <p style="color:var(--muted);font-size:15px;margin:0 0 10px 0;">
       „Do hodin" prázdné = neomezeno. Zahrnuté hodiny se odečtou od prvního tieru.
     </p>
     <input type="hidden" name="tier_count" id="tier_count" value="{{ tariff.get('tiers', [])|length }}">

@@ -5,9 +5,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 ENV TZ=Europe/Prague
-COPY requirements.txt .
+COPY timetrack/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+COPY timetrack/ .
+COPY office_auth/ ./office_auth/
 RUN mkdir -p /app/data
 EXPOSE 8731
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8731"]

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ app_title }} — {% block title %}{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .auth-narrow { max-width: 420px; margin: 40px auto; }
+  .auth-narrow .field { margin-bottom: 12px; }
+  .auth-narrow input { width: 100%; box-sizing: border-box; }
+  .auth-msg { font-size: 16px; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; }
+  .auth-msg.err { background: #fde8e8; color: #9b1c1c; }
+  .auth-msg.ok { background: #e6f6ea; color: #1e6b34; }
+  .auth-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .auth-top a { text-decoration: none; }
+  .users-table input[type=text] { width: 9em; }
+  .users-table td { vertical-align: middle; }
+  .muted { color: var(--muted); font-size: 15px; }
+  code.token { display: block; padding: 10px; background: #f3f3f3; word-break: break-all; user-select: all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+{% if user and not narrow %}
+<div class="auth-top">
+  <a href="/"><b>← {{ app_title }}</b></a>
+  <div style="display:flex; gap:12px; align-items:center;">
+    <a class="link" href="/account">👤 {{ user.username }}</a>
+    {% if user.is_admin %}<a class="link" href="/admin/users">Uživatelé</a>{% endif %}
+    <form method="post" action="/logout" style="display:inline"><button type="submit" class="btn btn-sm btn-secondary">Odhlásit</button></form>
+  </div>
+</div>
+{% endif %}
+{% block content %}{% endblock %}
+</div>
+</body>
+</html>

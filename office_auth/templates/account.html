@@ -1,0 +1,34 @@
+{% extends "_base.html" %}
+{% block title %}Můj účet{% endblock %}
+{% block content %}
+{% if changed %}<div class="auth-msg ok">Heslo změněno. Ostatní přihlášení tohoto účtu byla odhlášena.</div>{% endif %}
+<div class="card">
+  <h2>Můj účet — {{ user.username }}</h2>
+  <p>
+    Role: <b>{{ "admin" if user.is_admin else "uživatel" }}</b> ·
+    Přístup:
+    {% for key, label in app_labels.items() %}{% if user["can_" ~ key] %}<b>{{ label }}</b> {% endif %}{% endfor %}
+  </p>
+  <a class="btn" href="/account/password">Změnit heslo</a>
+</div>
+
+<div class="card">
+  <h2>API token pro skripty</h2>
+  <p class="muted">Pro <code>tools/reconcile.py</code> a <code>tools/nudge.sh</code> (proměnná <code>TIMETRACK_TOKEN</code>).
+    Token má stejná práva jako ty. Nový token zneplatní předchozí.</p>
+  {% if new_token %}
+  <div class="auth-msg ok">Nový token — zkopíruj si ho teď, znovu se nezobrazí:</div>
+  <code class="token">{{ new_token }}</code>
+  {% else %}
+  <p>Stav: {{ "nastaven" if user.api_token_hash else "žádný" }}</p>
+  {% endif %}
+  <div style="display:flex; gap:8px; margin-top:10px;">
+    <form method="post" action="/account/token"><input type="hidden" name="action" value="new">
+      <button type="submit" class="btn btn-sm">Vygenerovat nový</button></form>
+    {% if user.api_token_hash or new_token %}
+    <form method="post" action="/account/token"><input type="hidden" name="action" value="revoke">
+      <button type="submit" class="btn btn-sm btn-danger">Zrušit</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

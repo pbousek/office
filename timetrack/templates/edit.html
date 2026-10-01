@@ -8,6 +8,7 @@
 </head>
 <body>
 <div class="wrap">
+{% include "_user.html" %}
   <h1>⏱ TimeTrack</h1>
   <div class="sub"><a class="link" href="/?year={{ year }}&month={{ month }}{% if filter_customer %}&customer={{ filter_customer|urlencode }}{% endif %}">&larr; zpět na přehled</a></div>
 

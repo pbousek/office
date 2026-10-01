@@ -8,6 +8,7 @@ ENV TZ=Europe/Prague
 COPY fakturace/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY fakturace/ .
+COPY office_auth/ ./office_auth/
 COPY timetrack/pdf_export.py /timetrack/pdf_export.py
 RUN mkdir -p /app/data
 EXPOSE 8732

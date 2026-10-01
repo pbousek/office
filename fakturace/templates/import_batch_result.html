@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Výsledek hromadného importu</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Výsledek hromadného importu</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 <h2>Výsledek importu</h2>
@@ -14,7 +14,7 @@
     <tbody>
     {% for r in imported %}
     <tr>
-      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td style="font-size:14px;color:var(--muted);">{{ r.filename }}</td>
       <td>{{ r.number }}</td>
       <td><a class="link" href="/invoices/{{ r.inv_id }}">zobrazit</a></td>
     </tr>
@@ -32,7 +32,7 @@
     <tbody>
     {% for r in skipped %}
     <tr>
-      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td style="font-size:14px;color:var(--muted);">{{ r.filename }}</td>
       <td style="color:var(--orange);">{{ r.reason }}</td>
       <td><a class="link" href="/import/file/{{ r.filename }}">načíst ručně →</a></td>
     </tr>
@@ -46,7 +46,7 @@
 <div class="card">
   <h2 style="font-size:16px;margin-top:0;color:var(--danger);">Chyby ({{ errors | length }})</h2>
   {% for e in errors %}
-  <div style="font-size:13px;color:var(--danger);margin-bottom:4px;">{{ e }}</div>
+  <div style="font-size:15px;color:var(--danger);margin-bottom:4px;">{{ e }}</div>
   {% endfor %}
 </div>
 {% endif %}

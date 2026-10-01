@@ -1,0 +1,59 @@
+{% extends "_base.html" %}
+{% block title %}Uživatelé{% endblock %}
+{% block content %}
+{% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+{% if message %}<div class="auth-msg ok">{{ message }}</div>{% endif %}
+
+<div class="card">
+  <h2>Uživatelé</h2>
+  <p class="muted">Účty jsou společné pro TimeTrack i Fakturaci; zaškrtnutím se určuje, kam uživatel smí.</p>
+  <table class="users-table">
+    <thead><tr><th>Jméno</th>{% for key, label in app_labels.items() %}<th>{{ label }}</th>{% endfor %}<th>Admin</th><th>Aktivní</th><th></th><th>Reset hesla</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+    <tr>
+      <td><form id="edit-{{ u.id }}" method="post" action="/admin/users/{{ u.id }}/edit"></form>
+        <input form="edit-{{ u.id }}" type="text" name="username" value="{{ u.username }}" required>
+        {% if u.must_change_password %}<div class="muted">čeká na změnu hesla</div>{% endif %}</td>
+      {% for key in app_labels %}<td><input form="edit-{{ u.id }}" type="checkbox" name="apps" value="{{ key }}" {{ "checked" if u["can_" ~ key] }}></td>{% endfor %}
+      <td><input form="edit-{{ u.id }}" type="checkbox" name="is_admin" value="1" {{ "checked" if u.is_admin }}></td>
+      <td><input form="edit-{{ u.id }}" type="checkbox" name="active" value="1" {{ "checked" if u.active }}></td>
+      <td><button form="edit-{{ u.id }}" type="submit" class="btn btn-sm">Uložit</button></td>
+      <td>
+        <form method="post" action="/admin/users/{{ u.id }}/password" style="display:flex; gap:4px;">
+          <input type="password" name="password" placeholder="nové heslo" minlength="{{ min_password }}" autocomplete="new-password" required style="width:9em">
+          <button type="submit" class="btn btn-sm btn-secondary">Nastavit</button>
+        </form>
+      </td>
+      <td>
+        {% if u.id != user.id %}
+        <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('Smazat uživatele {{ u.username }}? Jeho záznamy času zůstanou, ale nebudou nikomu přiřazené. Spíš zvaž jen zrušit „Aktivní“.')">
+          <button type="submit" class="btn-danger">smazat</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Nový uživatel</h2>
+  <form method="post" action="/admin/users/add">
+    <div class="form-row">
+      <div class="field"><label>Jméno</label><input type="text" name="username" required></div>
+      <div class="field"><label>Počáteční heslo (min. {{ min_password }})</label>
+        <input type="password" name="password" minlength="{{ min_password }}" autocomplete="new-password" required></div>
+    </div>
+    <div style="display:flex; gap:18px; align-items:center; margin:10px 0;">
+      {% for key, label in app_labels.items() %}
+      <label style="display:flex; gap:6px; align-items:center; margin:0;"><input type="checkbox" name="apps" value="{{ key }}" {{ "checked" if key == app_key }}> {{ label }}</label>
+      {% endfor %}
+      <label style="display:flex; gap:6px; align-items:center; margin:0;"><input type="checkbox" name="is_admin" value="1"> Admin</label>
+      <button type="submit" class="btn">Založit</button>
+    </div>
+  </form>
+  <p class="muted">Uživatel si heslo při prvním přihlášení musí změnit.</p>
+</div>
+{% endblock %}

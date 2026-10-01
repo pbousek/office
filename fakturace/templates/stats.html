@@ -2,7 +2,7 @@
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fakturace — Statistiky {{ year }}</title>
-<link rel="stylesheet" href="/static/style.css?v=4">
+<link rel="stylesheet" href="/static/style.css?v=5">
 <style>
 .bar-wrap { display: flex; align-items: flex-end; gap: 6px; height: 160px; margin: 16px 0 8px; }
 .bar-group { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
@@ -11,15 +11,15 @@
 .bar:hover { opacity: .8; }
 .bar-inv { background: var(--accent-light); }
 .bar-paid { background: #16a34a; }
-.bar-label { font-size: 10px; color: var(--muted); }
-.bar-val { font-size: 9px; color: var(--muted); text-align: center; }
+.bar-label { font-size: 12px; color: var(--muted); }
+.bar-val { font-size: 11px; color: var(--muted); text-align: center; }
 
 .cust-bar-wrap { margin: 4px 0; }
 .cust-bar-bg { background: var(--bg); border-radius: 4px; height: 20px; position: relative; overflow: hidden; }
 .cust-bar-inv { background: var(--accent-light); height: 100%; border-radius: 4px; opacity: .6; position: absolute; top: 0; left: 0; }
 .cust-bar-paid { background: #16a34a; height: 100%; border-radius: 4px; position: absolute; top: 0; left: 0; }
 
-.legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.legend { display: flex; gap: 16px; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
 .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 </style>
 </head>
@@ -30,7 +30,7 @@
   <div class="toolbar">
     <h2>Statistiky</h2>
     <form method="get" action="/stats" style="display:flex;gap:8px;align-items:center;">
-      <label style="font-size:13px;color:var(--muted);">Rok:</label>
+      <label style="font-size:15px;color:var(--muted);">Rok:</label>
       <select name="year" onchange="this.form.submit()">
         {% for y in available_years %}
         <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>

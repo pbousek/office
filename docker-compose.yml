@@ -1,11 +1,17 @@
 services:
   timetrack:
-    build: ./timetrack
+    build:
+      context: .
+      dockerfile: timetrack/Dockerfile
     restart: unless-stopped
     ports:
       - "127.0.0.1:8731:8731"
+    environment:
+      - AUTH_DB_PATH=/auth_data/auth.db
+      - OFFICE_ADMIN_PASSWORD
     volumes:
       - timetrack_data:/app/data
+      - auth_data:/auth_data
 
   fakturace:
     build:
@@ -16,12 +22,16 @@ services:
       - "127.0.0.1:8732:8732"
     environment:
       - TIMETRACK_DB_PATH=/timetrack_data/timetrack.db
+      - AUTH_DB_PATH=/auth_data/auth.db
+      - OFFICE_ADMIN_PASSWORD
     volumes:
       - fakturace_data:/app/data
       - timetrack_data:/timetrack_data:ro
+      - auth_data:/auth_data
     depends_on:
       - timetrack
 
 volumes:
   timetrack_data:
   fakturace_data:
+  auth_data:

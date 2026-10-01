@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Import ze složky</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Import ze složky</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 <h2>Import ze složky</h2>
@@ -62,7 +62,7 @@
       {% for r in importable %}
       <tr>
         <td><input type="checkbox" name="files" value="{{ r.filename }}" checked></td>
-        <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+        <td style="font-size:14px;color:var(--muted);">{{ r.filename }}</td>
         <td>{{ r.number }}</td>
         <td>{{ r.issue_date }}</td>
         <td>{{ r.customer_name }}</td>
@@ -86,7 +86,7 @@
     <tbody>
     {% for r in unknown %}
     <tr>
-      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td style="font-size:14px;color:var(--muted);">{{ r.filename }}</td>
       <td>{{ r.number }}</td>
       <td>{{ r.issue_date }}</td>
       <td>{{ r.customer_ico or "—" }}</td>
@@ -109,7 +109,7 @@
     <tbody>
     {% for r in already %}
     <tr style="opacity:0.6;">
-      <td style="font-size:12px;color:var(--muted);">{{ r.filename }}</td>
+      <td style="font-size:14px;color:var(--muted);">{{ r.filename }}</td>
       <td>{{ r.number }}</td>
       <td>{{ r.issue_date }}</td>
       <td>{{ r.customer_name }}</td>
@@ -125,7 +125,7 @@
 <div class="card">
   <h2 style="font-size:16px;margin-top:0;color:var(--danger);">Chyby při čtení ({{ errored | length }})</h2>
   {% for r in errored %}
-  <div style="font-size:13px;margin-bottom:4px;"><b>{{ r.filename }}</b>: {{ r.error }}</div>
+  <div style="font-size:15px;margin-bottom:4px;"><b>{{ r.filename }}</b>: {{ r.error }}</div>
   {% endfor %}
 </div>
 {% endif %}

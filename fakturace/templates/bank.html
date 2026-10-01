@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Párování plateb</title><link rel="stylesheet" href="/static/style.css?v=4"></head>
+<title>Párování plateb</title><link rel="stylesheet" href="/static/style.css?v=5"></head>
 <body><div class="wrap">
 {% include "_nav.html" %}
 <h2>Párování plateb</h2>
@@ -26,7 +26,7 @@
 
 <div class="card">
   <h2 style="font-size:16px;margin-top:0;">Nahrát CSV výpis</h2>
-  <p style="color:var(--muted);font-size:13px;margin:0 0 12px 0;">
+  <p style="color:var(--muted);font-size:15px;margin:0 0 12px 0;">
     Stáhni výpis z Air Bank internetového bankovnictví (Přehled pohybů → Export → CSV) a nahraj sem.
   </p>
   <form method="post" action="/bank/parse" enctype="multipart/form-data">

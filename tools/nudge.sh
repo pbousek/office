@@ -11,6 +11,7 @@ set -u
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL="${TIMETRACK_URL:-http://localhost:8731}"
+TOKEN="${TIMETRACK_TOKEN:-}"  # API token z TimeTracku (👤 účet → API token)
 NTFY="${TT_NTFY_URL:-}"
 
 # Aby notify-send fungoval z cronu (bez přihlášené session):
@@ -26,7 +27,7 @@ notify() {  # title, body
 }
 
 timer_running() {
-  curl -fsS --max-time 4 "$URL/widget/state" 2>/dev/null | grep -q '"state": *"running"'
+  curl -fsS --max-time 4 ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$URL/widget/state" 2>/dev/null | grep -q '"state": *"running"'
 }
 
 case "${1:-ask}" in

@@ -13,6 +13,7 @@
 
 Proměnné prostředí:
     TT_LOG_DIR, TT_CONFIG_DIR, TIMETRACK_URL
+    TIMETRACK_TOKEN       API token z TimeTracku (👤 účet → API token)
     TT_IDLE_MIN (15)      mezera, která ukončí blok práce
     TT_MIN_BLOCK_MIN (5)  kratší bloky ignorovat
     TT_GAP_ALERT_MIN (30) o kolik musí "viděno" převýšit "zapsáno" pro notifikaci
@@ -30,6 +31,7 @@ HOME = os.path.expanduser("~")
 LOG_DIR = os.environ.get("TT_LOG_DIR", os.path.join(HOME, ".local/share/timetrack"))
 CFG_DIR = os.environ.get("TT_CONFIG_DIR", os.path.join(HOME, ".config/timetrack"))
 URL = os.environ.get("TIMETRACK_URL", "http://localhost:8731").rstrip("/")
+TOKEN = os.environ.get("TIMETRACK_TOKEN", "").strip()
 IDLE = timedelta(minutes=float(os.environ.get("TT_IDLE_MIN", "15")))
 MIN_BLOCK = timedelta(minutes=float(os.environ.get("TT_MIN_BLOCK_MIN", "5")))
 GAP_ALERT = float(os.environ.get("TT_GAP_ALERT_MIN", "30")) / 60.0
@@ -186,7 +188,9 @@ def main():
     logged: dict[str, float] = {}
     api_ok = True
     try:
-        with urllib.request.urlopen(f"{URL}/api/day?day={day.isoformat()}", timeout=5) as r:
+        req = urllib.request.Request(f"{URL}/api/day?day={day.isoformat()}",
+                                     headers={"Authorization": f"Bearer {TOKEN}"} if TOKEN else {})
+        with urllib.request.urlopen(req, timeout=5) as r:
             logged = {k: float(v) for k, v in json.load(r).get("by_customer", {}).items()}
     except Exception:
         api_ok = False
