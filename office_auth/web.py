@@ -175,6 +175,7 @@ def setup(app: FastAPI, app_key: str, jinja_env: Environment,
 
     def page(template: str, request: Request, status: int = 200, **ctx) -> HTMLResponse:
         ctx.setdefault("user", getattr(request.state, "user", None))
+        ctx.setdefault("mail_enabled", mail.enabled())
         return _page(status, template, app_title=app_title, app_key=app_key,
                      other_apps=other_apps(app_key),
                      app_labels=APP_LABELS, min_password=MIN_PASSWORD, **ctx)
