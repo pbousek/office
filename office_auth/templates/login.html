@@ -11,8 +11,10 @@
       <input type="text" name="username" value="{{ username or '' }}" autocomplete="username" autofocus required></div>
     <div class="field"><label>Heslo</label>
       <input type="password" name="password" autocomplete="current-password" required></div>
-    <button type="submit" class="btn">Přihlásit</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+      <button type="submit" class="btn">Přihlásit</button>
+      {% if mail_enabled %}<a href="/password-reset" style="color:#1d4ed8; text-decoration:underline; font-size:15px;">Zapomenuté heslo?</a>{% endif %}
+    </div>
   </form>
-  {% if mail_enabled %}<p style="margin-top:14px"><a class="link" href="/password-reset">Zapomenuté heslo?</a></p>{% endif %}
 </div>
 {% endblock %}

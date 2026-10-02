@@ -148,7 +148,9 @@ def _plain(status: int, text: str):
 
 
 def _page(status: int, template: str, **ctx) -> HTMLResponse:
-    return HTMLResponse(_jinja.get_template(template).render(**ctx), status_code=status)
+    # Account pages are never cached — an old copy could miss links or show stale state.
+    return HTMLResponse(_jinja.get_template(template).render(**ctx), status_code=status,
+                        headers={"Cache-Control": "no-store"})
 
 
 def _safe_next(target: str) -> str:
