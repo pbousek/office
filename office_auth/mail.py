@@ -10,6 +10,7 @@ import os
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 
 def _cfg(name: str, default: str = "") -> str:
@@ -25,6 +26,8 @@ def send(to: str, subject: str, body: str):
     msg["From"] = _cfg("FROM")
     msg["To"] = to
     msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=_cfg("FROM").rpartition("@")[2] or None)
     msg.set_content(body)
 
     host, port = _cfg("HOST"), int(_cfg("PORT", "25"))
