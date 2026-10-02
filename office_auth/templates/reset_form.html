@@ -1,0 +1,21 @@
+{% extends "_base.html" %}{% set narrow = true %}
+{% block title %}Nové heslo{% endblock %}
+{% block content %}
+<div class="card auth-narrow">
+  <h2>Nové heslo</h2>
+  {% if not target %}
+  <div class="auth-msg err">Odkaz je neplatný nebo vypršel. Požádej o nový.</div>
+  <a class="btn btn-secondary" href="/password-reset">Zapomenuté heslo</a>
+  {% else %}
+  <p>Účet <b>{{ target.username }}</b></p>
+  {% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+  <form method="post" action="/password-reset/{{ token }}">
+    <div class="field"><label>Nové heslo (min. {{ min_password }} znaků)</label>
+      <input type="password" name="new" autocomplete="new-password" minlength="{{ min_password }}" required autofocus></div>
+    <div class="field"><label>Nové heslo znovu</label>
+      <input type="password" name="new2" autocomplete="new-password" minlength="{{ min_password }}" required></div>
+    <button type="submit" class="btn">Nastavit heslo</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

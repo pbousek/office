@@ -1,0 +1,17 @@
+{% extends "_base.html" %}{% set narrow = true %}
+{% block title %}Ověřovací kód{% endblock %}
+{% block content %}
+<div class="card auth-narrow">
+  <h2>{{ "⏱" if app_key == "timetrack" else "🧾" }} {{ app_title }} — ověřovací kód</h2>
+  {% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+  <form method="post" action="/login/2fa">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field"><label>Kód z aplikace (6 číslic) nebo záložní kód</label>
+      <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" autofocus required></div>
+    <div class="field"><label style="display:flex; gap:8px; align-items:center;">
+      <input type="checkbox" name="remember" value="1" style="width:auto"> Zapamatovat toto zařízení na 30 dní</label></div>
+    <button type="submit" class="btn">Ověřit</button>
+  </form>
+  <form method="post" action="/logout" style="margin-top:12px"><button type="submit" class="btn btn-sm btn-secondary">Zrušit</button></form>
+</div>
+{% endblock %}

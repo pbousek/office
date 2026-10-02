@@ -1,0 +1,11 @@
+{% extends "_base.html" %}
+{% block title %}Záložní kódy{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px">
+  <h2>Záložní kódy</h2>
+  <div class="auth-msg ok">Dvoufázové ověření je zapnuté.</div>
+  <p>Ulož si tyhle kódy (třeba do správce hesel). Každý jde použít <b>jednou</b> místo kódu z aplikace, když nebudeš mít telefon. Znovu se nezobrazí.</p>
+  <code class="token" style="font-size:17px; line-height:1.8">{% for c in codes %}{{ c }}<br>{% endfor %}</code>
+  <p style="margin-top:14px"><a class="btn" href="/account">Hotovo</a></p>
+</div>
+{% endblock %}

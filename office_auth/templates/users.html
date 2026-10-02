@@ -7,17 +7,20 @@
 <div class="card">
   <h2>Uživatelé</h2>
   <p class="muted">Účty jsou společné pro TimeTrack i Fakturaci; zaškrtnutím se určuje, kam uživatel smí.</p>
+  <div style="overflow-x:auto">
   <table class="users-table">
-    <thead><tr><th>Jméno</th>{% for key, label in app_labels.items() %}<th>{{ label }}</th>{% endfor %}<th>Admin</th><th>Aktivní</th><th></th><th>Reset hesla</th><th></th></tr></thead>
+    <thead><tr><th>Jméno</th><th>E-mail</th>{% for key, label in app_labels.items() %}<th>{{ label }}</th>{% endfor %}<th>Admin</th><th>Aktivní</th><th>2FA</th><th></th><th>Reset hesla</th><th></th></tr></thead>
     <tbody>
     {% for u in users %}
     <tr>
       <td><form id="edit-{{ u.id }}" method="post" action="/admin/users/{{ u.id }}/edit"></form>
         <input form="edit-{{ u.id }}" type="text" name="username" value="{{ u.username }}" required>
         {% if u.must_change_password %}<div class="muted">čeká na změnu hesla</div>{% endif %}</td>
+      <td><input form="edit-{{ u.id }}" type="email" name="email" value="{{ u.email }}" style="width:13em"></td>
       {% for key in app_labels %}<td><input form="edit-{{ u.id }}" type="checkbox" name="apps" value="{{ key }}" {{ "checked" if u["can_" ~ key] }}></td>{% endfor %}
       <td><input form="edit-{{ u.id }}" type="checkbox" name="is_admin" value="1" {{ "checked" if u.is_admin }}></td>
       <td><input form="edit-{{ u.id }}" type="checkbox" name="active" value="1" {{ "checked" if u.active }}></td>
+      <td>{% if u.totp_enabled %}<form method="post" action="/admin/users/{{ u.id }}/2fa-off" onsubmit="return confirm('Vypnout dvoufázové ověření pro {{ u.username }}? (např. ztratil telefon)')" style="display:flex; gap:6px; align-items:center;">✅<button type="submit" class="btn-danger">vypnout</button></form>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><button form="edit-{{ u.id }}" type="submit" class="btn btn-sm">Uložit</button></td>
       <td>
         <form method="post" action="/admin/users/{{ u.id }}/password" style="display:flex; gap:4px;">
@@ -36,6 +39,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
 <div class="card">
@@ -43,6 +47,7 @@
   <form method="post" action="/admin/users/add">
     <div class="form-row">
       <div class="field"><label>Jméno</label><input type="text" name="username" required></div>
+      <div class="field"><label>E-mail (pro reset hesla)</label><input type="email" name="email"></div>
       <div class="field"><label>Počáteční heslo (min. {{ min_password }})</label>
         <input type="password" name="password" minlength="{{ min_password }}" autocomplete="new-password" required></div>
     </div>

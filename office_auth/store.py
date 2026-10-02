@@ -5,6 +5,7 @@ per-user flags decide which app the user may enter.
 """
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import sqlite3
@@ -19,6 +20,10 @@ DB_PATH = Path(os.environ.get(
 
 APPS = ("timetrack", "fakturace")
 SESSION_DAYS = 30
+TRUSTED_DEVICE_DAYS = 30
+PENDING_LOGIN_MINUTES = 10
+RESET_MINUTES = 60
+RECOVERY_CODES = 10
 DEFAULT_ADMIN = "admin"
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
@@ -48,7 +53,35 @@ def init_db():
                 created_at TEXT NOT NULL,
                 expires_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS password_resets (
+                token_hash TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                expires_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS trusted_devices (
+                token_hash TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
         """)
+        # Columns added after the first release.
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        for col, ddl in (
+            ("email", "TEXT NOT NULL DEFAULT ''"),
+            ("totp_secret", "TEXT NOT NULL DEFAULT ''"),
+            ("totp_enabled", "INTEGER NOT NULL DEFAULT 0"),
+            ("totp_last_step", "INTEGER NOT NULL DEFAULT 0"),
+            ("recovery_codes", "TEXT NOT NULL DEFAULT '[]'"),
+        ):
+            if col not in cols:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+        if "pending" not in cols:
+            # pending=1: password OK, second factor not yet given.
+            conn.execute("ALTER TABLE sessions ADD COLUMN pending INTEGER NOT NULL DEFAULT 0")
         # First start: one admin that must change its password on first login.
         if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             password = os.environ.get("OFFICE_ADMIN_PASSWORD") or DEFAULT_ADMIN
@@ -59,7 +92,8 @@ def init_db():
                    VALUES (?, ?, 1, 1, 1, 1, ?)""",
                 (DEFAULT_ADMIN, hash_password(password), _now()),
             )
-        conn.execute("DELETE FROM sessions WHERE expires_at < ?", (_now(),))
+        for table in ("sessions", "password_resets", "trusted_devices"):
+            conn.execute(f"DELETE FROM {table} WHERE expires_at < ?", (_now(),))
         conn.commit()
 
 
@@ -80,6 +114,10 @@ def _now() -> str:
 
 def _sha256(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _expires(**delta) -> str:
+    return (datetime.now() + timedelta(**delta)).isoformat(timespec="seconds")
 
 
 # ---------- Passwords ----------
@@ -129,6 +167,26 @@ def get_user_by_name(username: str) -> dict | None:
         return dict(row) if row else None
 
 
+def get_user_by_login(login: str) -> dict | None:
+    """Look a user up by username or (unique) e-mail address."""
+    login = login.strip()
+    if not login:
+        return None
+    user = get_user_by_name(login)
+    if user:
+        return user
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM users WHERE email = ? COLLATE NOCASE",
+                            (login,)).fetchall()
+        return dict(rows[0]) if len(rows) == 1 else None
+
+
+def set_email(user_id: int, email: str):
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET email = ? WHERE id = ?", (email.strip(), user_id))
+        conn.commit()
+
+
 def list_users() -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM users ORDER BY username COLLATE NOCASE").fetchall()
@@ -143,26 +201,28 @@ def active_admin_count(exclude_id: int = 0) -> int:
         ).fetchone()[0]
 
 
-def create_user(username: str, password: str, is_admin: bool, apps: set[str]) -> int:
+def create_user(username: str, password: str, is_admin: bool, apps: set[str],
+                email: str = "") -> int:
     with get_conn() as conn:
         cur = conn.execute(
-            """INSERT INTO users (username, password_hash, is_admin, can_timetrack,
+            """INSERT INTO users (username, email, password_hash, is_admin, can_timetrack,
                                   can_fakturace, must_change_password, created_at)
-               VALUES (?, ?, ?, ?, ?, 1, ?)""",
-            (username.strip(), hash_password(password), int(is_admin),
+               VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+            (username.strip(), email.strip(), hash_password(password), int(is_admin),
              int("timetrack" in apps), int("fakturace" in apps), _now()),
         )
         conn.commit()
         return cur.lastrowid
 
 
-def update_user(user_id: int, username: str, is_admin: bool, active: bool, apps: set[str]):
+def update_user(user_id: int, username: str, email: str, is_admin: bool, active: bool,
+                apps: set[str]):
     with get_conn() as conn:
         conn.execute(
-            """UPDATE users SET username = ?, is_admin = ?, active = ?,
+            """UPDATE users SET username = ?, email = ?, is_admin = ?, active = ?,
                                 can_timetrack = ?, can_fakturace = ?
                WHERE id = ?""",
-            (username.strip(), int(is_admin), int(active),
+            (username.strip(), email.strip(), int(is_admin), int(active),
              int("timetrack" in apps), int("fakturace" in apps), user_id),
         )
         if not active:
@@ -187,16 +247,31 @@ def delete_user(user_id: int):
 
 # ---------- Sessions ----------
 
-def create_session(user_id: int) -> str:
+def create_session(user_id: int, pending: bool = False) -> str:
+    """Full session, or a short pending one waiting for the second factor."""
     token = secrets.token_urlsafe(32)
-    expires = (datetime.now() + timedelta(days=SESSION_DAYS)).isoformat(timespec="seconds")
+    expires = _expires(minutes=PENDING_LOGIN_MINUTES) if pending else _expires(days=SESSION_DAYS)
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-            (_sha256(token), user_id, _now(), expires),
+            """INSERT INTO sessions (token_hash, user_id, created_at, expires_at, pending)
+               VALUES (?, ?, ?, ?, ?)""",
+            (_sha256(token), user_id, _now(), expires, int(pending)),
         )
         conn.commit()
     return token
+
+
+def user_for_pending(token: str) -> dict | None:
+    """User behind a pending (password OK, waiting for 2FA) login."""
+    if not token:
+        return None
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+               WHERE s.token_hash = ? AND s.pending = 1 AND s.expires_at > ? AND u.active = 1""",
+            (_sha256(token), _now()),
+        ).fetchone()
+        return dict(row) if row else None
 
 
 def user_for_session(token: str) -> dict | None:
@@ -208,7 +283,7 @@ def user_for_session(token: str) -> dict | None:
         row = conn.execute(
             """SELECT u.*, s.expires_at AS session_expires FROM sessions s
                JOIN users u ON u.id = s.user_id
-               WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1""",
+               WHERE s.token_hash = ? AND s.pending = 0 AND s.expires_at > ? AND u.active = 1""",
             (th, _now()),
         ).fetchone()
         if not row:
@@ -259,3 +334,130 @@ def user_for_api_token(token: str) -> dict | None:
             "SELECT * FROM users WHERE api_token_hash = ? AND active = 1", (_sha256(token),)
         ).fetchone()
         return dict(row) if row else None
+
+
+# ---------- Password reset by e-mail ----------
+
+def create_password_reset(user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    with get_conn() as conn:
+        conn.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+        conn.execute("INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+                     (_sha256(token), user_id, _expires(minutes=RESET_MINUTES)))
+        conn.commit()
+    return token
+
+
+def user_for_reset(token: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT u.* FROM password_resets r JOIN users u ON u.id = r.user_id
+               WHERE r.token_hash = ? AND r.expires_at > ? AND u.active = 1""",
+            (_sha256(token), _now()),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def consume_reset(token: str):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM password_resets WHERE token_hash = ?", (_sha256(token),))
+        conn.commit()
+
+
+# ---------- Second factor (TOTP + recovery codes) ----------
+
+def set_totp_secret(user_id: int, secret: str):
+    """Store a not-yet-confirmed secret (totp_enabled stays 0 until a code is verified)."""
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?",
+                     (secret, user_id))
+        conn.commit()
+
+
+def enable_totp(user_id: int, step: int) -> list[str]:
+    """Turn 2FA on; returns fresh recovery codes (shown once, stored hashed)."""
+    codes = [f"{secrets.token_hex(4)}-{secrets.token_hex(4)}" for _ in range(RECOVERY_CODES)]
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET totp_enabled = 1, totp_last_step = ?, recovery_codes = ? WHERE id = ?",
+            (step, json.dumps([_sha256(c) for c in codes]), user_id),
+        )
+        conn.commit()
+    return codes
+
+
+def disable_totp(user_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE users SET totp_secret = '', totp_enabled = 0, totp_last_step = 0,
+                                recovery_codes = '[]' WHERE id = ?""", (user_id,))
+        conn.execute("DELETE FROM trusted_devices WHERE user_id = ?", (user_id,))
+        conn.commit()
+
+
+def verify_second_factor(user: dict, code: str) -> bool:
+    """Check a TOTP code (no replay of an already used step) or a recovery code
+    (consumed on use)."""
+    from . import totp
+
+    code = code.strip().lower()
+    with get_conn() as conn:
+        row = conn.execute("SELECT totp_secret, totp_last_step, recovery_codes FROM users "
+                           "WHERE id = ? AND totp_enabled = 1", (user["id"],)).fetchone()
+        if not row:
+            return False
+        step = totp.match_step(row["totp_secret"], code)
+        if step is not None:
+            if step <= row["totp_last_step"]:
+                return False
+            conn.execute("UPDATE users SET totp_last_step = ? WHERE id = ?", (step, user["id"]))
+            conn.commit()
+            return True
+        hashes = json.loads(row["recovery_codes"] or "[]")
+        h = _sha256(code)
+        if h in hashes:
+            hashes.remove(h)
+            conn.execute("UPDATE users SET recovery_codes = ? WHERE id = ?",
+                         (json.dumps(hashes), user["id"]))
+            conn.commit()
+            return True
+    return False
+
+
+def recovery_codes_left(user: dict) -> int:
+    return len(json.loads(user.get("recovery_codes") or "[]"))
+
+
+# ---------- Trusted devices ("remember me" for the second factor) ----------
+
+def trust_device(user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO trusted_devices (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (_sha256(token), user_id, _now(), _expires(days=TRUSTED_DEVICE_DAYS)),
+        )
+        conn.commit()
+    return token
+
+
+def is_trusted_device(user_id: int, token: str) -> bool:
+    if not token:
+        return False
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT 1 FROM trusted_devices WHERE token_hash = ? AND user_id = ? AND expires_at > ?",
+            (_sha256(token), user_id, _now()),
+        ).fetchone() is not None
+
+
+def forget_devices(user_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM trusted_devices WHERE user_id = ?", (user_id,))
+        conn.commit()
+
+
+def trusted_device_count(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute("SELECT COUNT(*) FROM trusted_devices WHERE user_id = ? AND expires_at > ?",
+                            (user_id, _now())).fetchone()[0]

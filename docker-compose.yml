@@ -11,6 +11,12 @@ services:
       - OFFICE_ADMIN_PASSWORD
       - TIMETRACK_PUBLIC_URL=${TIMETRACK_PUBLIC_URL:-http://localhost:8731}
       - FAKTURACE_PUBLIC_URL=${FAKTURACE_PUBLIC_URL:-http://localhost:8732}
+      - OFFICE_SMTP_HOST
+      - OFFICE_SMTP_PORT
+      - OFFICE_SMTP_USER
+      - OFFICE_SMTP_PASSWORD
+      - OFFICE_SMTP_FROM
+      - OFFICE_TOTP_ISSUER
     volumes:
       - timetrack_data:/app/data
       - auth_data:/auth_data
@@ -28,6 +34,12 @@ services:
       - OFFICE_ADMIN_PASSWORD
       - TIMETRACK_PUBLIC_URL=${TIMETRACK_PUBLIC_URL:-http://localhost:8731}
       - FAKTURACE_PUBLIC_URL=${FAKTURACE_PUBLIC_URL:-http://localhost:8732}
+      - OFFICE_SMTP_HOST
+      - OFFICE_SMTP_PORT
+      - OFFICE_SMTP_USER
+      - OFFICE_SMTP_PASSWORD
+      - OFFICE_SMTP_FROM
+      - OFFICE_TOTP_ISSUER
     volumes:
       - fakturace_data:/app/data
       - timetrack_data:/timetrack_data:ro

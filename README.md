@@ -40,6 +40,16 @@ Obě appky sdílejí uživatelské účty (`office_auth/`, SQLite `auth.db` ve v
   TIMETRACK_PUBLIC_URL=https://tt.example.cz
   FAKTURACE_PUBLIC_URL=https://inv.example.cz
   ```
+- **Zapomenuté heslo:** uživatel s vyplněným e-mailem si nechá poslat odkaz (platí 60 min). Vyžaduje SMTP v `.env`:
+  ```
+  OFFICE_SMTP_HOST=smtp.example.cz
+  OFFICE_SMTP_PORT=587            # 25 / 587 (STARTTLS) / 465 (SSL)
+  OFFICE_SMTP_USER=...            # volitelné
+  OFFICE_SMTP_PASSWORD=...
+  OFFICE_SMTP_FROM=office@example.cz
+  ```
+  Bez SMTP odkaz „Zapomenuté heslo“ chybí a heslo resetuje admin.
+- **Dvoufázové ověření (TOTP):** každý si ho zapne v 👤 účtu (QR kód do Aegis / Google Authenticator / Bitwarden…), dostane 10 jednorázových záložních kódů. Při přihlášení jde zařízení zapamatovat na 30 dní. Když někdo ztratí telefon, admin mu 2FA v *Uživatelé* vypne. Název v aplikaci určuje `OFFICE_TOTP_ISSUER` v `.env` (výchozí „Office“).
 - Skripty v `tools/` se autentizují API tokenem (👤 účet → API token, env `TIMETRACK_TOKEN`).
 
 Data jedné instance jsou společná pro všechny její uživatele (jedna firma, jedna fakturační řada). Pro jinou firmu spusť samostatnou instanci, tj. vlastní compose projekt a porty:

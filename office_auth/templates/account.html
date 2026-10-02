@@ -1,6 +1,8 @@
 {% extends "_base.html" %}
 {% block title %}Můj účet{% endblock %}
 {% block content %}
+{% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+{% if message %}<div class="auth-msg ok">{{ message }}</div>{% endif %}
 {% if changed %}<div class="auth-msg ok">Heslo změněno. Ostatní přihlášení tohoto účtu byla odhlášena.</div>{% endif %}
 <div class="card">
   <h2>Můj účet — {{ user.username }}</h2>
@@ -10,6 +12,42 @@
     {% for key, label in app_labels.items() %}{% if user["can_" ~ key] %}<b>{{ label }}</b> {% endif %}{% endfor %}
   </p>
   <a class="btn" href="/account/password">Změnit heslo</a>
+</div>
+
+<div class="card">
+  <h2>E-mail</h2>
+  <p class="muted">Slouží k obnovení zapomenutého hesla.{% if not mail_enabled %} (Odesílání e-mailů zatím není na serveru nastavené.){% endif %}</p>
+  <form method="post" action="/account/email" class="form-row" style="max-width:640px">
+    <div class="field wide"><label>E-mail</label><input type="email" name="email" value="{{ user.email }}" autocomplete="email"></div>
+    <div class="field"><label>Heslo pro potvrzení</label><input type="password" name="password" autocomplete="current-password" required></div>
+    <div class="field" style="flex:0 0 auto"><button type="submit" class="btn">Uložit</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Dvoufázové ověření</h2>
+  {% if user.totp_enabled %}
+  <p>Stav: <b style="color:#1e6b34">zapnuto</b> · zbývá záložních kódů: <b>{{ recovery_left }}</b> · zapamatovaná zařízení: <b>{{ devices }}</b></p>
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end;">
+    <form method="post" action="/account/2fa/codes" style="display:flex; gap:8px; align-items:flex-end;">
+      <div class="field"><label>Kód z aplikace</label><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" required style="width:9em"></div>
+      <button type="submit" class="btn btn-sm btn-secondary">Nové záložní kódy</button>
+    </form>
+    {% if devices %}
+    <form method="post" action="/account/devices/forget"><button type="submit" class="btn btn-sm btn-secondary">Zapomenout zapamatovaná zařízení</button></form>
+    {% endif %}
+  </div>
+  <details style="margin-top:14px"><summary>Vypnout dvoufázové ověření</summary>
+    <form method="post" action="/account/2fa/disable" class="form-row" style="max-width:640px; margin-top:8px">
+      <div class="field"><label>Heslo</label><input type="password" name="password" autocomplete="current-password" required></div>
+      <div class="field"><label>Kód z aplikace / záložní kód</label><input type="text" name="code" autocomplete="one-time-code" required></div>
+      <div class="field" style="flex:0 0 auto"><button type="submit" class="btn btn-sm btn-danger">Vypnout</button></div>
+    </form>
+  </details>
+  {% else %}
+  <p>Stav: <b>vypnuto</b>. Při přihlášení se kromě hesla zeptá i na kód z aplikace v telefonu; zařízení si můžeš nechat zapamatovat na 30 dní.</p>
+  <a class="btn" href="/account/2fa">Zapnout</a>
+  {% endif %}
 </div>
 
 <div class="card">

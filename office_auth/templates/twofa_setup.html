@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{% block title %}Dvoufázové ověření{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px">
+  <h2>Zapnout dvoufázové ověření</h2>
+  {% if error %}<div class="auth-msg err">{{ error }}</div>{% endif %}
+  <ol>
+    <li>V aplikaci pro ověřovací kódy (Aegis, Google Authenticator, Bitwarden, 1Password…) přidej účet naskenováním QR kódu.</li>
+    <li>Zadej kód, který aplikace ukáže.</li>
+  </ol>
+  <div class="qr" style="width:240px; height:240px; background:#fff; padding:6px">{{ qr|safe }}</div>
+  <style>.qr svg { width: 100%; height: 100%; }</style>
+  <p class="muted">Nejde naskenovat? Zadej klíč ručně: <code style="user-select:all">{{ secret }}</code></p>
+  <form method="post" action="/account/2fa/enable" style="display:flex; gap:8px; align-items:flex-end; max-width:360px">
+    <div class="field"><label>Kód z aplikace</label>
+      <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" required autofocus></div>
+    <button type="submit" class="btn">Zapnout</button>
+  </form>
+</div>
+{% endblock %}
