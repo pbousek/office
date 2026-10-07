@@ -9,3 +9,5 @@
 fakturace/import/
 fakturace/banka/
 tools/
+**/tests/
+**/.pytest_cache/

@@ -58,6 +58,16 @@
   select:focus, #newbox input:focus { outline: none; border-color: var(--accent-light); }
   #newbox button { width: 100%; }
   #toggle-new { width: 100%; }
+  #recent { margin-bottom: 10px; }
+  #recent .task {
+    display: flex; width: 100%; gap: 8px; align-items: baseline; text-align: left;
+    background: #fff; color: var(--ink); border: 1px solid var(--line); font-weight: 400;
+    padding: 7px 9px; margin-bottom: 5px;
+  }
+  #recent .task:hover { background: #f0f0f2; }
+  #recent .task .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #recent .task .when { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .divider { font-size: 11px; color: var(--muted); margin: 4px 0 8px; }
   .toast { font-size: 12px; color: var(--ok); text-align: center; min-height: 16px; margin-bottom: 6px; }
   #concurrent {
     font-size: 12px; color: var(--accent); text-align: center; margin-bottom: 8px;
@@ -75,6 +85,11 @@
 <div id="list"></div>
 
 <div id="newbox" hidden>
+  <div id="recent" hidden>
+    <label>Navázat na</label>
+    <div id="recent-list"></div>
+    <div class="divider">nebo nový úkol:</div>
+  </div>
   <div class="row">
     <label for="w-customer">Zákazník</label>
     <select id="w-customer">
@@ -151,6 +166,33 @@ function cardHTML(t) {
   </div>`;
 }
 
+function whenLabel(iso) {
+  const d = new Date(iso.slice(0, 10) + "T00:00:00");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((today - d) / 86400000);
+  if (days <= 0) return "dnes";
+  if (days === 1) return "včera";
+  if (days < 5) return `před ${days} dny`;
+  return `${d.getDate()}. ${d.getMonth() + 1}.`;
+}
+
+const taskKey = (t) => [t.customer, t.activity, t.note].join("\u0001");
+
+function renderRecent(state) {
+  const busy = new Set((state.timers || []).map(taskKey));
+  const items = (state.recent || []).filter(t => !busy.has(taskKey(t)));
+  $("recent").hidden = items.length === 0;
+  $("recent-list").innerHTML = items.map((t, i) => {
+    const act = t.activity ? ` · ${esc(t.activity)}` : "";
+    const note = t.note ? ` — ${esc(t.note)}` : "";
+    return `<button class="task" data-i="${i}" title="spustit znovu">
+      <span class="t">▶ <b>${esc(t.customer)}</b>${act}${note}</span>
+      <span class="when">${whenLabel(t.last)}</span></button>`;
+  }).join("");
+  recentItems = items;
+}
+let recentItems = [];
+
 function render(state) {
   if (state.saved) {
     $("toast").textContent = `Uloženo: ${fmt(state.saved.worked_seconds)} — ${state.saved.customer}`;
@@ -170,6 +212,7 @@ function render(state) {
   const empty = timers.length === 0;
   $("newbox").hidden = !(empty || newOpen);
   $("toggle-new").hidden = empty || newOpen;
+  renderRecent(state);
   tick();
 }
 
@@ -238,6 +281,13 @@ $("list").addEventListener("blur", (e) => {
 }, true);
 
 // --- nový timer ---
+$("recent-list").addEventListener("click", (e) => {
+  const btn = e.target.closest("button.task");
+  if (!btn) return;
+  const t = recentItems[+btn.dataset.i];
+  newOpen = false;
+  post("/widget/start", { customer: t.customer, activity: t.activity, note: t.note });
+});
 $("toggle-new").addEventListener("click", () => {
   newOpen = true;
   $("newbox").hidden = false;

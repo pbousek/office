@@ -218,6 +218,7 @@ def _widget_state(user_id: int, saved: dict | None = None) -> dict:
         "timers": timers,
         "running": sum(1 for t in timers if t["state"] == "running"),
         "saved": saved,
+        "recent": db.recent_tasks(user_id),
         "now": datetime.now().replace(microsecond=0).isoformat(),
     }
 

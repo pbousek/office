@@ -12,3 +12,4 @@ fakturace/Screenshot_*
 timetrack/data/
 timetrack/__pycache__/
 timetrack/Screenshot_*
+.pytest_cache/

@@ -202,6 +202,21 @@ def list_months(user_id: int):
         return [r["ym"] for r in rows]
 
 
+def recent_tasks(user_id: int, days: int = 14, limit: int = 8) -> list[dict]:
+    """The user's distinct recent tasks (customer + activity + note), newest
+    first — offered in the widget to continue yesterday's work."""
+    since = (datetime.now() - timedelta(days=days)).date().isoformat()
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT customer, activity, note, MAX(start_time) AS last
+               FROM entries WHERE user_id = ? AND start_time >= ?
+               GROUP BY customer, activity, note
+               ORDER BY last DESC LIMIT ?""",
+            (user_id, since, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def entries_for_date(user_id: int, day: str) -> list[dict]:
     """The user's entries whose start_time falls on the given YYYY-MM-DD, with duration hours."""
     with get_conn() as conn:

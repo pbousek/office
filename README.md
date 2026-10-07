@@ -58,6 +58,16 @@ Data jedné instance jsou společná pro všechny její uživatele (jedna firma,
 docker compose -p office-pepa up --build -d   # porty uprav v kopii docker-compose.yml
 ```
 
+## Testy
+
+```bash
+pip install -r timetrack/requirements.txt -r fakturace/requirements.txt -r requirements-dev.txt
+pytest timetrack/tests
+pytest fakturace/tests
+```
+
+Každá appka zvlášť (obě mají moduly `app` a `db`). Testy běží nad prázdnými DB v dočasném adresáři, na data v `data/` nesahají.
+
 ## Lokální spuštění bez Dockeru
 
 Viz README v jednotlivých složkách: [timetrack/README.md](timetrack/README.md), [fakturace/README.md](fakturace/README.md).
