@@ -2,8 +2,14 @@
 """Čas strávený s Claude Code -> návrh záznamů pro TimeTrack.
 
     tt-claude.py plan [DEN]      # návrh (jen čte; DEN = today|yesterday|YYYY-MM-DD)
+    tt-claude.py sync [DEN] [--activity A --note "..."] [--yes]
+                                 # průběžný zápis: doplní nové bloky a prodlouží rozběhnuté záznamy
     tt-claude.py add --customer X --activity Y --from 2026-11-09T21:10 --to 2026-11-09T23:05 \\
                      [--note "..."] [--yes]    # bez --yes jen vypíše, co by zapsal
+
+`sync` je idempotentní: blok bez záznamu vloží (potřebuje --activity a --note), záznam, který
+se s blokem překrývá, jen PRODLOUŽÍ (nikdy nezkracuje, poznámku nemění, pokud nedostane --note),
+blok překrytý víc záznamy nechá být. Bez --yes jen vypíše, co by udělal.
 
 `plan` čte transkripty sessions (~/.claude/projects/*/*.jsonl), z časových značek
 zpráv skládá bloky práce (mezera delší než TT_IDLE_MIN ukončí blok), zákazníka určí
@@ -34,6 +40,7 @@ CFG_DIR = os.environ.get("TT_CONFIG_DIR", os.path.join(HOME, ".config/timetrack"
 CLAUDE_DIR = os.environ.get("TT_CLAUDE_DIR", os.path.join(HOME, ".claude/projects"))
 IDLE = timedelta(minutes=float(os.environ.get("TT_IDLE_MIN", "15")))
 MIN_BLOCK = timedelta(minutes=float(os.environ.get("TT_MIN_BLOCK_MIN", "5")))
+EPS = timedelta(minutes=2)
 GAP_MAX = timedelta(minutes=float(os.environ.get("TT_GAP_MAX_MIN", "60")))
 
 
@@ -185,9 +192,13 @@ def hours(a: datetime, b: datetime) -> str:
     return f"{(b - a).total_seconds() / 3600:.2f} h"
 
 
-def cmd_plan(args):
-    day = {"today": date.today(), "yesterday": date.today() - timedelta(days=1)}.get(args.day) \
-        or date.fromisoformat(args.day)
+def parse_day(text: str) -> date:
+    return {"today": date.today(), "yesterday": date.today() - timedelta(days=1)}.get(text) \
+        or date.fromisoformat(text)
+
+
+def compute(day: date):
+    """-> (rules, {zákazník: [(start, end, [popisky])]}, nemapováno, přeskočeno)."""
     rules = load_dirmap()
     per_customer: dict[str, list] = {}
     unmapped, skipped = [], []
@@ -204,13 +215,21 @@ def cmd_plan(args):
             unmapped.append((label, s["cwd"], bl))
             continue
         per_customer.setdefault(customer, []).extend((b[0], b[1], [label]) for b in bl)
+    result = {}
+    for customer, bl in per_customer.items():
+        others = [(a, b) for c, a, b in spans if c != customer]
+        result[customer] = [(s.replace(second=0, microsecond=0), e.replace(second=0, microsecond=0), lab)
+                            for s, e, lab in close_gaps(merge(bl), others) if e - s >= MIN_BLOCK]
+    return rules, result, unmapped, skipped
 
+
+def cmd_plan(args):
+    day = parse_day(args.day)
+    rules, blocks, unmapped, skipped = compute(day)
     print(f"== Čas s Claude Code, {day.isoformat()} (mezera >{IDLE.seconds // 60} min ukončí blok, ale u stejného zákazníka se\n   mezera do {GAP_MAX.seconds // 60} min započítá, pokud ji nevyplňuje práce pro jiného) ==")
     if not rules:
         print("(chybí ~/.config/timetrack/dirmap – všechno je nemapované)")
-    for customer, bl in sorted(per_customer.items()):
-        others = [(a, b) for c, a, b in spans if c != customer]
-        merged = [m for m in close_gaps(merge(bl), others) if m[1] - m[0] >= MIN_BLOCK]
+    for customer, merged in sorted(blocks.items()):
         total = sum(((e - s) for s, e, _ in merged), timedelta())
         print(f"\n{customer}  –  {total.total_seconds() / 3600:.2f} h")
         for s, e, labels in merged:
@@ -231,28 +250,81 @@ def cmd_plan(args):
     else:
         for e in entries:
             print(f"  {e['start_time'][11:16]}–{e['end_time'][11:16]}  {e['customer']}  {e.get('activity', '')}  {e.get('note', '')}")
-    print("\n(nic se nezapsalo – `add` zapisuje jen s --yes)")
+    print("\n(nic se nezapsalo – `add` a `sync` zapisují jen s --yes)")
+
+
+def _form(customer, activity, start, end, note):
+    return {
+        "customer": customer, "activity": activity, "date": f"{start:%Y-%m-%d}",
+        "start_h": f"{start:%H}", "start_m": f"{start:%M}", "end_h": f"{end:%H}", "end_m": f"{end:%M}",
+        "note": note, "year": start.year, "month": start.month, "filter_customer": "",
+    }
+
+
+def _post(path: str, form: dict):
+    if not TOKEN:
+        sys.exit("chybí API token (~/.config/timetrack/token)")
+    try:
+        _request(path, form).close()
+    except urllib.error.URLError as e:
+        sys.exit(f"zápis selhal: {e}")
+
+
+def cmd_sync(args):
+    day = parse_day(args.day)
+    _, blocks, _, _ = compute(day)
+    entries, why = entries_of_day(day)
+    if entries is None:
+        sys.exit(why)
+    todo = 0
+    for customer, merged in sorted(blocks.items()):
+        mine = [e for e in entries if e["customer"] == customer]
+        for s, e, labels in merged:
+            hit = [x for x in mine if datetime.fromisoformat(x["start_time"]) < e
+                   and datetime.fromisoformat(x["end_time"]) > s]
+            rng = f"{s:%H:%M}–{e:%H:%M} ({hours(s, e)})"
+            if not hit:
+                if not (args.activity and args.note):
+                    print(f"NOVÝ blok {customer} {rng} [{' | '.join(labels)}] – chybí --activity/--note")
+                    todo += 1
+                    continue
+                print(f"PŘIDAT {customer} {rng}  {args.activity}: {args.note}")
+                if args.yes:
+                    _post("/entries/add", _form(customer, args.activity, s, e, args.note))
+                else:
+                    todo += 1
+            elif len(hit) > 1:
+                print(f"PŘESKOČENO {customer} {rng} – překrývá {len(hit)} záznamů (ručně rozdělené?)")
+            else:
+                x = hit[0]
+                xs, xe = datetime.fromisoformat(x["start_time"]), datetime.fromisoformat(x["end_time"])
+                ns = s if s <= xs - EPS else xs  # drobné odchylky (sekundy, zaokrouhlení) neřešíme
+                ne = e if e >= xe + EPS else xe
+                note = args.note or x.get("note", "")
+                activity = args.activity or x.get("activity", "")
+                if (ns, ne, note, activity) == (xs, xe, x.get("note", ""), x.get("activity", "")):
+                    print(f"beze změny {customer} {xs:%H:%M}–{xe:%H:%M}")
+                    continue
+                print(f"PRODLOUŽIT {customer} #{x['id']} {xs:%H:%M}–{xe:%H:%M} -> {ns:%H:%M}–{ne:%H:%M} ({hours(ns, ne)})")
+                if args.yes:
+                    _post(f"/entries/{x['id']}/edit", _form(customer, activity, ns, ne, note))
+                else:
+                    todo += 1
+    if todo and not args.yes:
+        print("(dry-run – přidej --yes pro zápis)")
+    if not blocks:
+        print("(žádné bloky pro zákazníky z dirmap)")
 
 
 def cmd_add(args):
     start, end = datetime.fromisoformat(args.start), datetime.fromisoformat(args.end)
     if end <= start:
         sys.exit("konec musí být po začátku")
-    form = {
-        "customer": args.customer, "activity": args.activity, "date": f"{start:%Y-%m-%d}",
-        "start_h": f"{start:%H}", "start_m": f"{start:%M}", "end_h": f"{end:%H}", "end_m": f"{end:%M}",
-        "note": args.note, "year": start.year, "month": start.month, "filter_customer": "",
-    }
     print(f"{start:%Y-%m-%d} {start:%H:%M}–{end:%H:%M} ({hours(start, end)})  {args.customer} / {args.activity}  {args.note}")
     if not args.yes:
         print("(dry-run – přidej --yes pro zápis)")
         return
-    if not TOKEN:
-        sys.exit("chybí API token (~/.config/timetrack/token)")
-    try:
-        _request("/entries/add", form).close()
-    except urllib.error.URLError as e:
-        sys.exit(f"zápis selhal: {e}")
+    _post("/entries/add", _form(args.customer, args.activity, start, end, args.note))
     print("zapsáno")
 
 
@@ -262,6 +334,12 @@ def main():
     p = sub.add_parser("plan")
     p.add_argument("day", nargs="?", default="today")
     p.set_defaults(fn=cmd_plan)
+    y = sub.add_parser("sync")
+    y.add_argument("day", nargs="?", default="today")
+    y.add_argument("--activity", default="")
+    y.add_argument("--note", default="")
+    y.add_argument("--yes", action="store_true")
+    y.set_defaults(fn=cmd_sync)
     a = sub.add_parser("add")
     a.add_argument("--customer", required=True)
     a.add_argument("--activity", required=True)
